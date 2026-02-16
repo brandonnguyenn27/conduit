@@ -1,0 +1,21 @@
+{
+  "projectName": "conduit",
+  "mode": "file-router",
+  "typescript": true,
+  "packageManager": "pnpm",
+  "tailwind": true,
+  "addOnOptions": {},
+  "git": true,
+  "version": 1,
+  "framework": "react-cra",
+  "chosenAddOns": [
+    "biome",
+    "nitro",
+    "convex",
+    "compiler",
+    "form",
+    "shadcn",
+    "better-auth",
+    "tanstack-query"
+  ]
+}
