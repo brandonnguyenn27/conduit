@@ -116,3 +116,25 @@ export const remove = mutation({
     await ctx.db.delete(args.id)
   },
 })
+
+export const upsertFromImport = mutation({
+  args: {
+    organizationId: v.id('organizations'),
+    linkedInUrl: v.string(),
+    profile: profileInsertValidator,
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query('profiles')
+      .withIndex('by_organization_linkedin', (q) =>
+        q.eq('organizationId', args.organizationId).eq('linkedInUrl', args.linkedInUrl)
+      )
+      .unique()
+    const doc = { ...args.profile, organizationId: args.organizationId, linkedInUrl: args.linkedInUrl }
+    if (existing) {
+      await ctx.db.patch(existing._id, doc)
+      return existing._id
+    }
+    return await ctx.db.insert('profiles', doc)
+  },
+})

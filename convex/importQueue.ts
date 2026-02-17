@@ -1,4 +1,4 @@
-import { mutation, query } from './_generated/server'
+import { internalMutation, mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 
 const statusValidator = v.union(
@@ -90,5 +90,21 @@ export const remove = mutation({
   args: { id: v.id('importQueue') },
   handler: async (ctx, args) => {
     await ctx.db.delete(args.id)
+  },
+})
+
+export const claimNextBatch = internalMutation({
+  args: { limit: v.number() },
+  handler: async (ctx, args) => {
+    const items = await ctx.db
+      .query('importQueue')
+      .withIndex('by_status', (q) => q.eq('status', 'pending'))
+      .take(args.limit)
+    const out: { id: typeof items[0]['_id']; organizationId: typeof items[0]['organizationId']; linkedInUrl: string }[] = []
+    for (const item of items) {
+      await ctx.db.patch(item._id, { status: 'processing' })
+      out.push({ id: item._id, organizationId: item.organizationId, linkedInUrl: item.linkedInUrl })
+    }
+    return out
   },
 })
