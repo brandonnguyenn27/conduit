@@ -16,10 +16,12 @@ function usernameFromUrl(linkedInUrl: string): string | null {
 
 type ClaimedItem = { id: Id<'importQueue'>; organizationId: Id<'organizations'>; linkedInUrl: string }
 
+const DEFAULT_BATCH_SIZE = 10
+
 export const processImportQueue = action({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args): Promise<{ processed: number; done?: number; failed?: number }> => {
-    const limit = args.limit ?? 20
+    const limit = args.limit ?? DEFAULT_BATCH_SIZE
     const batch = await ctx.runMutation(internal.importQueue.claimNextBatch, {
       limit,
     }) as ClaimedItem[]
@@ -70,6 +72,9 @@ export const processImportQueue = action({
         })
         failed++
       }
+    }
+    if (batch.length === limit) {
+      await ctx.runMutation(api.importQueue.scheduleNextPipelineRun, { limit })
     }
     return { processed: batch.length, done, failed }
   },

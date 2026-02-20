@@ -25,6 +25,19 @@ This project uses [Vitest](https://vitest.dev/) for testing. You can run the tes
 pnpm test
 ```
 
+### Import pipeline
+
+- **Unit tests** (no API keys): `tests/convex/lib/linkedin/mapToProfile.test.ts` and `normalizePrompt.test.ts` cover mapping and LLM response parsing. Run with `pnpm test`.
+- **E2E (test mode, no API keys)**:
+  1. Set `PIPELINE_TEST_MODE=true` in **Convex Dashboard** → your project → **Settings** → **Environment Variables**. (Actions run in Convex’s environment; `.env.local` is not used when you run the action from the Dashboard.)
+  2. Run Convex dev: `pnpm dlx convex dev`.
+  3. Create an organization in the Dashboard (Data → `organizations` → Add document) and note its `_id`.
+  4. Seed test queue: Functions → run `importQueue.seedTestQueue` with `{ organizationId: "<org_id>", count: 3 }`.
+  5. Run the pipeline: Functions → `importPipeline.processImportQueue` → Run with `{}`, or wait for the 15‑minute cron.
+  6. Check Data → `importQueue` (rows should be `done`) and `profiles` (3 test profiles). Then unset `PIPELINE_TEST_MODE` for real imports.
+  7. If rows stay **processing** (e.g. action failed before updating them): run `importQueue.resetStuckProcessing` with `{}` (or `{ organizationId: "<org_id>" }`) to set them back to **pending**, fix the env var above, and run the pipeline again.
+- **E2E (real APIs)**: Set `LINKDAPI_API_KEY` (and optionally `ANTHROPIC_API_KEY`), leave `PIPELINE_TEST_MODE` unset. Add queue items via `importQueue.createMany` or your app, then run `importPipeline.processImportQueue` or wait for the cron.
+
 ## Styling
 
 This project uses [Tailwind CSS](https://tailwindcss.com/) for styling.

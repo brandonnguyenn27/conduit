@@ -1,5 +1,9 @@
+import { api } from './_generated/api'
 import { internalMutation, mutation, query } from './_generated/server'
 import { v } from 'convex/values'
+
+const PIPELINE_RUN_AFTER_MS = 1000
+export const PIPELINE_BATCH_SIZE = 10
 
 const statusValidator = v.union(
   v.literal('pending'),
@@ -42,14 +46,31 @@ export const create = mutation({
     linkedInUrl: v.string(),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert('importQueue', {
+    const id = await ctx.db.insert('importQueue', {
       organizationId: args.organizationId,
       linkedInUrl: args.linkedInUrl,
       status: 'pending',
       createdAt: Date.now(),
     })
+    await ctx.scheduler.runAfter(PIPELINE_RUN_AFTER_MS, api.importPipeline.processImportQueue, {
+      limit: PIPELINE_BATCH_SIZE,
+    })
+    return id
   },
 })
+
+/** Schedules the next pipeline run (used by the action when a full batch was processed so more may be pending). */
+export const scheduleNextPipelineRun = mutation({
+  args: { limit: v.number() },
+  handler: async (ctx, args) => {
+    await ctx.scheduler.runAfter(PIPELINE_RUN_AFTER_MS, api.importPipeline.processImportQueue, {
+      limit: args.limit,
+    })
+  },
+})
+
+/** Max URLs per createMany call to stay within Convex limits. For larger CSVs, call createMany in chunks. */
+const MAX_CREATE_MANY = 500
 
 export const createMany = mutation({
   args: {
@@ -57,8 +78,13 @@ export const createMany = mutation({
     linkedInUrls: v.array(v.string()),
   },
   handler: async (ctx, args) => {
+    if (args.linkedInUrls.length > MAX_CREATE_MANY) {
+      throw new Error(
+        `linkedInUrls length ${args.linkedInUrls.length} exceeds max ${MAX_CREATE_MANY}. Call createMany in chunks.`
+      )
+    }
     const now = Date.now()
-    return await Promise.all(
+    const ids = await Promise.all(
       args.linkedInUrls.map((linkedInUrl) =>
         ctx.db.insert('importQueue', {
           organizationId: args.organizationId,
@@ -68,6 +94,10 @@ export const createMany = mutation({
         })
       )
     )
+    await ctx.scheduler.runAfter(PIPELINE_RUN_AFTER_MS, api.importPipeline.processImportQueue, {
+      limit: PIPELINE_BATCH_SIZE,
+    })
+    return ids
   },
 })
 
@@ -90,6 +120,74 @@ export const remove = mutation({
   args: { id: v.id('importQueue') },
   handler: async (ctx, args) => {
     await ctx.db.delete(args.id)
+  },
+})
+
+/** Delete finished (done/failed) rows older than retentionDays. Only finished records are removed; pending/processing are kept. Call from cron or manually. */
+export const pruneFinishedOlderThan = mutation({
+  args: { retentionDays: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const days = args.retentionDays ?? 7
+    const cutoff = Date.now() - days * 24 * 60 * 60 * 1000
+    const done = await ctx.db
+      .query('importQueue')
+      .withIndex('by_status', (q) => q.eq('status', 'done'))
+      .collect()
+    const failed = await ctx.db
+      .query('importQueue')
+      .withIndex('by_status', (q) => q.eq('status', 'failed'))
+      .collect()
+    let deleted = 0
+    for (const row of [...done, ...failed]) {
+      if (row.createdAt < cutoff) {
+        await ctx.db.delete(row._id)
+        deleted++
+      }
+    }
+    return deleted
+  },
+})
+
+/** Reset rows stuck in "processing" (e.g. after action crashed) back to "pending" so they can be retried. */
+export const resetStuckProcessing = mutation({
+  args: { organizationId: v.optional(v.id('organizations')) },
+  handler: async (ctx, args) => {
+    const all = await ctx.db.query('importQueue').collect()
+    const stuck = args.organizationId
+      ? all.filter((r) => r.status === 'processing' && r.organizationId === args.organizationId)
+      : all.filter((r) => r.status === 'processing')
+    for (const row of stuck) {
+      await ctx.db.patch(row._id, { status: 'pending', errorMessage: undefined })
+    }
+    return stuck.length
+  },
+})
+
+const TEST_URL_PREFIX = 'https://www.linkedin.com/in/conduit-test-'
+
+/** Inserts test queue rows for e2e when PIPELINE_TEST_MODE=true. No API keys needed. */
+export const seedTestQueue = mutation({
+  args: {
+    organizationId: v.id('organizations'),
+    count: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const count = Math.min(args.count ?? 3, 10)
+    const now = Date.now()
+    const ids = []
+    for (let i = 1; i <= count; i++) {
+      const id = await ctx.db.insert('importQueue', {
+        organizationId: args.organizationId,
+        linkedInUrl: `${TEST_URL_PREFIX}${i}`,
+        status: 'pending',
+        createdAt: now,
+      })
+      ids.push(id)
+    }
+    await ctx.scheduler.runAfter(PIPELINE_RUN_AFTER_MS, api.importPipeline.processImportQueue, {
+      limit: PIPELINE_BATCH_SIZE,
+    })
+    return ids
   },
 })
 
