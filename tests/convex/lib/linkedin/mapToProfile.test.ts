@@ -46,6 +46,10 @@ describe('mapToProfile', () => {
     expect(out.schools).toEqual(['MIT'])
     expect(out.companies).toEqual(['Google'])
     expect(out.jobTitles).toEqual(['SWE', 'Senior SWE'])
+    expect(out.searchText).toContain('John Doe')
+    expect(out.searchText).toContain('Engineer at Acme')
+    expect(out.searchText).toContain('MIT')
+    expect(out.searchText).toContain('Google')
   })
 
   it('preserves education and experience for display', () => {
@@ -60,5 +64,47 @@ describe('mapToProfile', () => {
     expect(out.experience[0]).toMatchObject({ companyName: 'Meta', title: 'PM' })
     expect(out.experience[0].start).toEqual({ year: 2020 })
     expect(out.experience[0].end).toEqual({ year: 2023 })
+  })
+
+  it('derives current company from open-ended experiences', () => {
+    const raw = minimalRaw({
+      experience: [
+        {
+          companyName: 'Company A',
+          title: 'Engineer',
+          start: { year: 2020, month: 1 },
+          end: { year: 2022, month: 12 },
+        },
+        {
+          companyName: 'Company B',
+          title: 'Senior Engineer',
+          start: { year: 2023, month: 1 },
+          end: { year: 0, month: 0, day: 0 },
+        },
+      ],
+    })
+    const out = mapToProfile(raw, orgId)
+    expect(out.currentCompany).toBe('Company B')
+  })
+
+  it('falls back to most recent ended role when none are current', () => {
+    const raw = minimalRaw({
+      experience: [
+        {
+          companyName: 'Older Co',
+          title: 'Analyst',
+          start: { year: 2018, month: 1 },
+          end: { year: 2020, month: 12 },
+        },
+        {
+          companyName: 'Recent Co',
+          title: 'Manager',
+          start: { year: 2021, month: 1 },
+          end: { year: 2024, month: 1 },
+        },
+      ],
+    })
+    const out = mapToProfile(raw, orgId)
+    expect(out.currentCompany).toBe('Recent Co')
   })
 })

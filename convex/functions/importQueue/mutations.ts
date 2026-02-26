@@ -1,42 +1,24 @@
-import { api } from './_generated/api'
-import { internalMutation, mutation, query } from './_generated/server'
+import { api } from '../../_generated/api'
+import { internalMutation, mutation } from '../../_generated/server'
 import { v } from 'convex/values'
+import {
+  PIPELINE_BATCH_SIZE,
+  PIPELINE_INITIAL_RUN_AFTER_MS,
+  PIPELINE_NEXT_RUN_AFTER_MS,
+} from '../../lib/importPipelineConfig'
+import { MAX_CREATE_MANY, statusValidator, TEST_URL_PREFIX } from './helpers'
 
-const PIPELINE_RUN_AFTER_MS = 1000
-export const PIPELINE_BATCH_SIZE = 10
-
-const statusValidator = v.union(
-  v.literal('pending'),
-  v.literal('processing'),
-  v.literal('done'),
-  v.literal('failed')
-)
-
-export const listPending = query({
-  args: { limit: v.optional(v.number()) },
-  handler: async (ctx, args) => {
-    const limit = args.limit ?? 50
-    return await ctx.db
-      .query('importQueue')
-      .withIndex('by_status', (q) => q.eq('status', 'pending'))
-      .take(limit)
+/** Schedules the next pipeline run (used by the action when a full batch was processed so more may be pending). */
+export const scheduleNextPipelineRun = mutation({
+  args: {
+    limit: v.number(),
+    delayMs: v.optional(v.number()),
   },
-})
-
-export const listByOrganization = query({
-  args: { organizationId: v.id('organizations') },
   handler: async (ctx, args) => {
-    return await ctx.db
-      .query('importQueue')
-      .withIndex('by_organization', (q) => q.eq('organizationId', args.organizationId))
-      .collect()
-  },
-})
-
-export const get = query({
-  args: { id: v.id('importQueue') },
-  handler: async (ctx, args) => {
-    return await ctx.db.get(args.id)
+    const delayMs = args.delayMs ?? PIPELINE_NEXT_RUN_AFTER_MS
+    await ctx.scheduler.runAfter(delayMs, api.importPipeline.processImportQueue, {
+      limit: args.limit,
+    })
   },
 })
 
@@ -52,25 +34,12 @@ export const create = mutation({
       status: 'pending',
       createdAt: Date.now(),
     })
-    await ctx.scheduler.runAfter(PIPELINE_RUN_AFTER_MS, api.importPipeline.processImportQueue, {
+    await ctx.scheduler.runAfter(PIPELINE_INITIAL_RUN_AFTER_MS, api.importPipeline.processImportQueue, {
       limit: PIPELINE_BATCH_SIZE,
     })
     return id
   },
 })
-
-/** Schedules the next pipeline run (used by the action when a full batch was processed so more may be pending). */
-export const scheduleNextPipelineRun = mutation({
-  args: { limit: v.number() },
-  handler: async (ctx, args) => {
-    await ctx.scheduler.runAfter(PIPELINE_RUN_AFTER_MS, api.importPipeline.processImportQueue, {
-      limit: args.limit,
-    })
-  },
-})
-
-/** Max URLs per createMany call to stay within Convex limits. For larger CSVs, call createMany in chunks. */
-const MAX_CREATE_MANY = 500
 
 export const createMany = mutation({
   args: {
@@ -94,7 +63,7 @@ export const createMany = mutation({
         })
       )
     )
-    await ctx.scheduler.runAfter(PIPELINE_RUN_AFTER_MS, api.importPipeline.processImportQueue, {
+    await ctx.scheduler.runAfter(PIPELINE_INITIAL_RUN_AFTER_MS, api.importPipeline.processImportQueue, {
       limit: PIPELINE_BATCH_SIZE,
     })
     return ids
@@ -163,8 +132,6 @@ export const resetStuckProcessing = mutation({
   },
 })
 
-const TEST_URL_PREFIX = 'https://www.linkedin.com/in/conduit-test-'
-
 /** Inserts test queue rows for e2e when PIPELINE_TEST_MODE=true. No API keys needed. */
 export const seedTestQueue = mutation({
   args: {
@@ -184,7 +151,7 @@ export const seedTestQueue = mutation({
       })
       ids.push(id)
     }
-    await ctx.scheduler.runAfter(PIPELINE_RUN_AFTER_MS, api.importPipeline.processImportQueue, {
+    await ctx.scheduler.runAfter(PIPELINE_INITIAL_RUN_AFTER_MS, api.importPipeline.processImportQueue, {
       limit: PIPELINE_BATCH_SIZE,
     })
     return ids

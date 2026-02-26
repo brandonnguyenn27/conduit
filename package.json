@@ -7,6 +7,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
+    "import:linkedin-csv": "node --experimental-strip-types scripts/import-linkedin-csv.ts",
     "format": "biome format",
     "lint": "biome lint",
     "check": "biome check"

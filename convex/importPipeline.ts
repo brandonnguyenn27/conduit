@@ -6,6 +6,8 @@ import { api, internal } from './_generated/api'
 import { v } from 'convex/values'
 import { getLinkedInProvider, mapToProfile } from './lib/linkedin'
 import { normalizeSearchArrays } from './lib/linkedin/normalize'
+import { buildProfileSearchText } from './lib/search/profileSearchText'
+import { PIPELINE_BATCH_SIZE, PIPELINE_NEXT_RUN_AFTER_MS } from './lib/importPipelineConfig'
 
 const LINKEDIN_IN_REGEX = /linkedin\.com\/in\/([^/?]+)/i
 
@@ -16,13 +18,12 @@ function usernameFromUrl(linkedInUrl: string): string | null {
 
 type ClaimedItem = { id: Id<'importQueue'>; organizationId: Id<'organizations'>; linkedInUrl: string }
 
-const DEFAULT_BATCH_SIZE = 10
-
 export const processImportQueue = action({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args): Promise<{ processed: number; done?: number; failed?: number }> => {
-    const limit = args.limit ?? DEFAULT_BATCH_SIZE
-    const batch = await ctx.runMutation(internal.importQueue.claimNextBatch, {
+    const requestedLimit = Math.floor(args.limit ?? PIPELINE_BATCH_SIZE)
+    const limit = Math.max(1, Math.min(requestedLimit, PIPELINE_BATCH_SIZE))
+    const batch = await ctx.runMutation(internal.functions.importQueue.mutations.claimNextBatch, {
       limit,
     }) as ClaimedItem[]
     if (batch.length === 0) return { processed: 0 }
@@ -32,7 +33,7 @@ export const processImportQueue = action({
     for (const item of batch) {
       const username = usernameFromUrl(item.linkedInUrl)
       if (!username) {
-        await ctx.runMutation(api.importQueue.updateStatus, {
+        await ctx.runMutation(api.functions.importQueue.mutations.updateStatus, {
           id: item.id,
           status: 'failed',
           errorMessage: 'Invalid LinkedIn URL',
@@ -53,19 +54,31 @@ export const processImportQueue = action({
           profile.companies = normalized.companies
           profile.jobTitles = normalized.jobTitles
         }
-        await ctx.runMutation(api.profiles.upsertFromImport, {
+        profile.searchText = buildProfileSearchText({
+          name: profile.name,
+          headline: profile.headline,
+          summary: profile.summary,
+          location: profile.location,
+          industry: profile.industry,
+          skills: profile.skills,
+          majors: profile.majors,
+          schools: profile.schools,
+          companies: profile.companies,
+          jobTitles: profile.jobTitles,
+        })
+        await ctx.runMutation(api.functions.profiles.mutations.upsertFromImport, {
           organizationId: item.organizationId,
           linkedInUrl: item.linkedInUrl,
           profile,
         })
-        await ctx.runMutation(api.importQueue.updateStatus, {
+        await ctx.runMutation(api.functions.importQueue.mutations.updateStatus, {
           id: item.id,
           status: 'done',
         })
         done++
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e)
-        await ctx.runMutation(api.importQueue.updateStatus, {
+        await ctx.runMutation(api.functions.importQueue.mutations.updateStatus, {
           id: item.id,
           status: 'failed',
           errorMessage: message,
@@ -74,7 +87,10 @@ export const processImportQueue = action({
       }
     }
     if (batch.length === limit) {
-      await ctx.runMutation(api.importQueue.scheduleNextPipelineRun, { limit })
+      await ctx.runMutation(api.functions.importQueue.mutations.scheduleNextPipelineRun, {
+        limit,
+        delayMs: PIPELINE_NEXT_RUN_AFTER_MS,
+      })
     }
     return { processed: batch.length, done, failed }
   },

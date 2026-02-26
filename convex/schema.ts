@@ -52,15 +52,18 @@ export default defineSchema({
     schools: v.array(v.string()),
     companies: v.array(v.string()),
     jobTitles: v.array(v.string()),
+    searchText: v.optional(v.string()),
+    currentCompany: v.optional(v.string()),
+    class: v.optional(v.string()),
     claimedByUserId: v.optional(v.string()),
     email: v.optional(v.string()),
   })
     .index('by_organization_linkedin', ['organizationId', 'linkedInUrl'])
     .index('by_organization_claimed', ['organizationId', 'claimedByUserId'])
-    .index('by_organization_majors', ['organizationId', 'majors'])
-    .index('by_organization_schools', ['organizationId', 'schools'])
-    .index('by_organization_companies', ['organizationId', 'companies'])
-    .index('by_organization_jobTitles', ['organizationId', 'jobTitles']),
+    .searchIndex('by_search_text', {
+      searchField: 'searchText',
+      filterFields: ['organizationId'],
+    }),
 
   importQueue: defineTable({
     organizationId: v.id('organizations'),

@@ -13,6 +13,7 @@ __unconfig*
 .env
 .env.*
 !.env.example
+scripts
 
 # IDE and OS
 .DS_Store
