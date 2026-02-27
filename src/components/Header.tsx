@@ -11,12 +11,15 @@ export default function Header() {
     select: (state) => state.location.pathname,
   })
   const isHome = pathname === '/'
+  const isHomeApp = pathname.startsWith('/home')
 
   useEffect(() => {
     if (isHome) {
       setIsOpen(false)
     }
   }, [isHome])
+
+  if (isHomeApp) return null
 
   return (
     <>

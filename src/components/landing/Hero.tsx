@@ -31,7 +31,7 @@ export default function Hero() {
               size="lg"
               className="border border-zinc-900 bg-zinc-900 text-zinc-100 transition-transform hover:-translate-y-0.5 hover:bg-zinc-800"
             >
-              <Link to="/demo/convex">Get Started</Link>
+              <Link to="/home">Get Started</Link>
             </Button>
             <Button
               asChild

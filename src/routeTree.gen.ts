@@ -9,7 +9,11 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as HomeRouteRouteImport } from './routes/home/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as HomeIndexRouteImport } from './routes/home/index'
+import { Route as HomeSavedRouteImport } from './routes/home/saved'
+import { Route as HomeProfileRouteImport } from './routes/home/profile'
 import { Route as DemoTanstackQueryRouteImport } from './routes/demo/tanstack-query'
 import { Route as DemoConvexRouteImport } from './routes/demo/convex'
 import { Route as DemoBetterAuthRouteImport } from './routes/demo/better-auth'
@@ -17,10 +21,30 @@ import { Route as DemoFormSimpleRouteImport } from './routes/demo/form.simple'
 import { Route as DemoFormAddressRouteImport } from './routes/demo/form.address'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
+const HomeRouteRoute = HomeRouteRouteImport.update({
+  id: '/home',
+  path: '/home',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const HomeIndexRoute = HomeIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => HomeRouteRoute,
+} as any)
+const HomeSavedRoute = HomeSavedRouteImport.update({
+  id: '/saved',
+  path: '/saved',
+  getParentRoute: () => HomeRouteRoute,
+} as any)
+const HomeProfileRoute = HomeProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => HomeRouteRoute,
 } as any)
 const DemoTanstackQueryRoute = DemoTanstackQueryRouteImport.update({
   id: '/demo/tanstack-query',
@@ -55,9 +79,13 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/home': typeof HomeRouteRouteWithChildren
   '/demo/better-auth': typeof DemoBetterAuthRoute
   '/demo/convex': typeof DemoConvexRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
+  '/home/profile': typeof HomeProfileRoute
+  '/home/saved': typeof HomeSavedRoute
+  '/home/': typeof HomeIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/demo/form/address': typeof DemoFormAddressRoute
   '/demo/form/simple': typeof DemoFormSimpleRoute
@@ -67,6 +95,9 @@ export interface FileRoutesByTo {
   '/demo/better-auth': typeof DemoBetterAuthRoute
   '/demo/convex': typeof DemoConvexRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
+  '/home/profile': typeof HomeProfileRoute
+  '/home/saved': typeof HomeSavedRoute
+  '/home': typeof HomeIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/demo/form/address': typeof DemoFormAddressRoute
   '/demo/form/simple': typeof DemoFormSimpleRoute
@@ -74,9 +105,13 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/home': typeof HomeRouteRouteWithChildren
   '/demo/better-auth': typeof DemoBetterAuthRoute
   '/demo/convex': typeof DemoConvexRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
+  '/home/profile': typeof HomeProfileRoute
+  '/home/saved': typeof HomeSavedRoute
+  '/home/': typeof HomeIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/demo/form/address': typeof DemoFormAddressRoute
   '/demo/form/simple': typeof DemoFormSimpleRoute
@@ -85,9 +120,13 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/home'
     | '/demo/better-auth'
     | '/demo/convex'
     | '/demo/tanstack-query'
+    | '/home/profile'
+    | '/home/saved'
+    | '/home/'
     | '/api/auth/$'
     | '/demo/form/address'
     | '/demo/form/simple'
@@ -97,15 +136,22 @@ export interface FileRouteTypes {
     | '/demo/better-auth'
     | '/demo/convex'
     | '/demo/tanstack-query'
+    | '/home/profile'
+    | '/home/saved'
+    | '/home'
     | '/api/auth/$'
     | '/demo/form/address'
     | '/demo/form/simple'
   id:
     | '__root__'
     | '/'
+    | '/home'
     | '/demo/better-auth'
     | '/demo/convex'
     | '/demo/tanstack-query'
+    | '/home/profile'
+    | '/home/saved'
+    | '/home/'
     | '/api/auth/$'
     | '/demo/form/address'
     | '/demo/form/simple'
@@ -113,6 +159,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  HomeRouteRoute: typeof HomeRouteRouteWithChildren
   DemoBetterAuthRoute: typeof DemoBetterAuthRoute
   DemoConvexRoute: typeof DemoConvexRoute
   DemoTanstackQueryRoute: typeof DemoTanstackQueryRoute
@@ -123,12 +170,40 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/home': {
+      id: '/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof HomeRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/home/': {
+      id: '/home/'
+      path: '/'
+      fullPath: '/home/'
+      preLoaderRoute: typeof HomeIndexRouteImport
+      parentRoute: typeof HomeRouteRoute
+    }
+    '/home/saved': {
+      id: '/home/saved'
+      path: '/saved'
+      fullPath: '/home/saved'
+      preLoaderRoute: typeof HomeSavedRouteImport
+      parentRoute: typeof HomeRouteRoute
+    }
+    '/home/profile': {
+      id: '/home/profile'
+      path: '/profile'
+      fullPath: '/home/profile'
+      preLoaderRoute: typeof HomeProfileRouteImport
+      parentRoute: typeof HomeRouteRoute
     }
     '/demo/tanstack-query': {
       id: '/demo/tanstack-query'
@@ -175,8 +250,25 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface HomeRouteRouteChildren {
+  HomeProfileRoute: typeof HomeProfileRoute
+  HomeSavedRoute: typeof HomeSavedRoute
+  HomeIndexRoute: typeof HomeIndexRoute
+}
+
+const HomeRouteRouteChildren: HomeRouteRouteChildren = {
+  HomeProfileRoute: HomeProfileRoute,
+  HomeSavedRoute: HomeSavedRoute,
+  HomeIndexRoute: HomeIndexRoute,
+}
+
+const HomeRouteRouteWithChildren = HomeRouteRoute._addFileChildren(
+  HomeRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  HomeRouteRoute: HomeRouteRouteWithChildren,
   DemoBetterAuthRoute: DemoBetterAuthRoute,
   DemoConvexRoute: DemoConvexRoute,
   DemoTanstackQueryRoute: DemoTanstackQueryRoute,
