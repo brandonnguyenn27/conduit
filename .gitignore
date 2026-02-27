@@ -20,6 +20,9 @@ scripts
 .vscode
 .cursor
 .idea
+skills-lock.json
+.pnpm-store
+
 
 # Tooling and caches
 .tanstack

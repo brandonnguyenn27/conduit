@@ -19,6 +19,9 @@ code {
 }
 
 :root {
+  --font-editorial:
+    'Lora', 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Palatino,
+    Georgia, serif;
   --background: oklch(1 0 0);
   --foreground: oklch(0.141 0.005 285.823);
   --card: oklch(1 0 0);
@@ -134,5 +137,72 @@ code {
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+.landing-page {
+  font-family: var(--font-editorial);
+}
+
+.dither-overlay {
+  position: relative;
+  overflow: hidden;
+}
+
+.dither-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.36;
+  background-image: url('/blue-noise.svg');
+  background-repeat: repeat;
+  image-rendering: pixelated;
+  mix-blend-mode: multiply;
+}
+
+.dither-threshold {
+  filter: saturate(0) contrast(250);
+}
+
+.float-drift {
+  animation: float-drift 8s ease-in-out infinite;
+}
+
+.value-stack-perspective {
+  perspective: 1200px;
+  transform-style: preserve-3d;
+}
+
+.value-stack-card {
+  transform-style: preserve-3d;
+}
+
+.value-stack-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  border: 1px solid rgb(113 113 122 / 0.22);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .value-stack-card {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+@keyframes float-drift {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -10px, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
   }
 }
