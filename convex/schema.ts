@@ -80,6 +80,14 @@ export default defineSchema({
     .index('by_status', ['status'])
     .index('by_organization', ['organizationId']),
 
+  organizationFacets: defineTable({
+    organizationId: v.id('organizations'),
+    companies: v.array(v.string()),
+    majors: v.array(v.string()),
+    schools: v.array(v.string()),
+    updatedAt: v.number(),
+  }).index('by_organization', ['organizationId']),
+
   appUsers: defineTable({
     betterAuthUserId: v.string(),
     organizationId: v.id('organizations'),
