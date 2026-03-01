@@ -9,8 +9,10 @@ export const Route = createFileRoute('/demo/better-auth')({
   component: BetterAuthDemo,
 })
 
+type AuthUser = { email: string; name?: string | null; image?: string | null }
+
 function SignedInView() {
-  const user = useQuery(api.auth.getCurrentUser)
+  const user = useQuery(api.auth.getCurrentUser) as AuthUser | null | undefined
 
   if (user === undefined || !user) return null
 

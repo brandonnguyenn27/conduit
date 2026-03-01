@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router'
 
+import { BackgroundBeams } from '@/components/ui/background-beams'
 import { Button } from '@/components/ui/button'
 
 import DitherOverlay from './DitherOverlay'
@@ -7,11 +8,17 @@ import DitherOverlay from './DitherOverlay'
 export default function Hero() {
   return (
     <section className="relative min-h-[72vh] overflow-hidden px-6 py-20 md:py-28">
-      <div className="float-drift absolute left-[12%] top-16 h-24 w-24 rounded-full border border-zinc-300/90 bg-white/70 blur-[1px]" />
-      <div className="float-drift absolute right-[10%] top-[30%] h-36 w-36 rounded-full border border-zinc-300/90 bg-zinc-200/70 blur-[1px]" />
-      <div className="float-drift absolute bottom-16 left-[24%] h-20 w-20 rounded-full border border-zinc-300/90 bg-white/70 blur-[1px]" />
-
-      <div className="relative mx-auto max-w-6xl">
+      <div
+        className="absolute inset-0 bg-zinc-900/10 [mask-image:linear-gradient(to_bottom,black_0%,black_70%,transparent_100%)] [mask-size:100%_100%] [mask-repeat:no-repeat]"
+        aria-hidden
+      >
+        <BackgroundBeams primaryColor="#7DD3FC" secondaryColor="#1E3A8A" />
+      </div>
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-1 h-40 bg-linear-to-t from-zinc-100 to-transparent"
+        aria-hidden
+      />
+      <div className="relative z-10 mx-auto max-w-6xl">
         <DitherOverlay className="relative rounded-3xl border border-zinc-300 bg-zinc-100/80 p-8 shadow-xl shadow-zinc-900/10 md:p-14">
         <div className="relative z-10 mx-auto max-w-4xl text-center">
           <p className="mb-5 text-xs uppercase tracking-[0.32em] text-zinc-700">
