@@ -26,11 +26,13 @@ export const create = mutation({
   args: {
     organizationId: v.id('organizations'),
     linkedInUrl: v.string(),
+    email: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const id = await ctx.db.insert('importQueue', {
       organizationId: args.organizationId,
       linkedInUrl: args.linkedInUrl,
+      email: args.email,
       status: 'pending',
       createdAt: Date.now(),
     })
@@ -44,20 +46,41 @@ export const create = mutation({
 export const createMany = mutation({
   args: {
     organizationId: v.id('organizations'),
-    linkedInUrls: v.array(v.string()),
+    linkedInUrls: v.optional(v.array(v.string())),
+    rows: v.optional(
+      v.array(
+        v.object({
+          linkedInUrl: v.string(),
+          email: v.optional(v.string()),
+        })
+      )
+    ),
   },
   handler: async (ctx, args) => {
-    if (args.linkedInUrls.length > MAX_CREATE_MANY) {
+    const rows =
+      args.rows ??
+      (args.linkedInUrls?.map((linkedInUrl) => ({
+        linkedInUrl,
+        email: undefined,
+      })) ??
+        [])
+
+    if (rows.length === 0) {
+      throw new Error('Provide either linkedInUrls or rows with at least one item.')
+    }
+
+    if (rows.length > MAX_CREATE_MANY) {
       throw new Error(
-        `linkedInUrls length ${args.linkedInUrls.length} exceeds max ${MAX_CREATE_MANY}. Call createMany in chunks.`
+        `rows length ${rows.length} exceeds max ${MAX_CREATE_MANY}. Call createMany in chunks.`
       )
     }
     const now = Date.now()
     const ids = await Promise.all(
-      args.linkedInUrls.map((linkedInUrl) =>
+      rows.map((row) =>
         ctx.db.insert('importQueue', {
           organizationId: args.organizationId,
-          linkedInUrl,
+          linkedInUrl: row.linkedInUrl,
+          email: row.email,
           status: 'pending',
           createdAt: now,
         })
@@ -165,10 +188,20 @@ export const claimNextBatch = internalMutation({
       .query('importQueue')
       .withIndex('by_status', (q) => q.eq('status', 'pending'))
       .take(args.limit)
-    const out: { id: typeof items[0]['_id']; organizationId: typeof items[0]['organizationId']; linkedInUrl: string }[] = []
+    const out: {
+      id: typeof items[0]['_id']
+      organizationId: typeof items[0]['organizationId']
+      linkedInUrl: string
+      email?: string
+    }[] = []
     for (const item of items) {
       await ctx.db.patch(item._id, { status: 'processing' })
-      out.push({ id: item._id, organizationId: item.organizationId, linkedInUrl: item.linkedInUrl })
+      out.push({
+        id: item._id,
+        organizationId: item.organizationId,
+        linkedInUrl: item.linkedInUrl,
+        email: item.email,
+      })
     }
     return out
   },

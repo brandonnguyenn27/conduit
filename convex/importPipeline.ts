@@ -16,7 +16,18 @@ function usernameFromUrl(linkedInUrl: string): string | null {
   return m ? m[1].trim() : null
 }
 
-type ClaimedItem = { id: Id<'importQueue'>; organizationId: Id<'organizations'>; linkedInUrl: string }
+function normalizeEmail(email?: string): string | undefined {
+  const trimmed = email?.trim()
+  if (!trimmed) return undefined
+  return trimmed.toLowerCase()
+}
+
+type ClaimedItem = {
+  id: Id<'importQueue'>
+  organizationId: Id<'organizations'>
+  linkedInUrl: string
+  email?: string
+}
 
 export const processImportQueue = action({
   args: { limit: v.optional(v.number()) },
@@ -45,32 +56,34 @@ export const processImportQueue = action({
       try {
         const raw = await provider.fetchFullProfile(username)
         const profile = mapToProfile(raw, item.organizationId)
+        const email = normalizeEmail(item.email)
+        const profileForImport = email ? { ...profile, email } : profile
         const normalized = await normalizeSearchArrays({
-          education: profile.education,
-          experience: profile.experience,
+          education: profileForImport.education,
+          experience: profileForImport.experience,
         })
         if (normalized) {
-          profile.majors = normalized.majors
-          profile.schools = normalized.schools
-          profile.companies = normalized.companies
-          profile.jobTitles = normalized.jobTitles
+          profileForImport.majors = normalized.majors
+          profileForImport.schools = normalized.schools
+          profileForImport.companies = normalized.companies
+          profileForImport.jobTitles = normalized.jobTitles
         }
-        profile.searchText = buildProfileSearchText({
-          name: profile.name,
-          headline: profile.headline,
-          summary: profile.summary,
-          location: profile.location,
-          industry: profile.industry,
-          skills: profile.skills,
-          majors: profile.majors,
-          schools: profile.schools,
-          companies: profile.companies,
-          jobTitles: profile.jobTitles,
+        profileForImport.searchText = buildProfileSearchText({
+          name: profileForImport.name,
+          headline: profileForImport.headline,
+          summary: profileForImport.summary,
+          location: profileForImport.location,
+          industry: profileForImport.industry,
+          skills: profileForImport.skills,
+          majors: profileForImport.majors,
+          schools: profileForImport.schools,
+          companies: profileForImport.companies,
+          jobTitles: profileForImport.jobTitles,
         })
         await ctx.runMutation(api.functions.profiles.mutations.upsertFromImport, {
           organizationId: item.organizationId,
           linkedInUrl: item.linkedInUrl,
-          profile,
+          profile: profileForImport,
         })
         await ctx.runMutation(api.functions.importQueue.mutations.updateStatus, {
           id: item.id,

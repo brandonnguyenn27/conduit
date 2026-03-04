@@ -35,6 +35,7 @@ export interface ProfileInsertPayload {
   companies: string[]
   jobTitles: string[]
   currentCompany?: string
+  email?: string
   searchText: string
 }
 

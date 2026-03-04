@@ -3,6 +3,16 @@ import { motion } from 'framer-motion'
 import { useState } from 'react'
 
 import {
+  Combobox,
+  ComboboxCollection,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from '@/components/ui/combobox'
+import { HoverBorderGradient } from '@/components/ui/hover-border-gradient'
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -53,29 +63,18 @@ export function ChatQueryInterface({ organizationId }: ChatQueryInterfaceProps) 
     : slot2Options[0]?.value ?? ''
   const effectiveSlot3 = slot3Options.some((o) => o.value === slot3)
     ? slot3
-    : slot3Options[0]?.value ?? ''
+    : ''
 
   function handleSlot1Change(value: Slot1Value) {
     setSlot1(value)
     const nextSlot2Options = getSlot2Options(value, config)
     setSlot2(nextSlot2Options[0]?.value ?? '')
-    const firstSlot2 = nextSlot2Options[0]?.value
-    if (firstSlot2 && facets) {
-      const nextSlot3Opts = getSlot3OptionsFromFacets(firstSlot2, facets)
-      setSlot3(nextSlot3Opts[0]?.value ?? '')
-    } else {
-      setSlot3('')
-    }
+    setSlot3('')
   }
 
   function handleSlot2Change(value: Slot2Value) {
     setSlot2(value)
-    if (facets) {
-      const nextSlot3Opts = getSlot3OptionsFromFacets(value, facets)
-      setSlot3(nextSlot3Opts[0]?.value ?? '')
-    } else {
-      setSlot3('')
-    }
+    setSlot3('')
   }
 
   const isLoading = organizationId && facets === undefined
@@ -88,7 +87,8 @@ export function ChatQueryInterface({ organizationId }: ChatQueryInterfaceProps) 
         'flex w-full max-w-6xl flex-wrap items-center gap-6',
         'rounded-xl border border-border',
         'bg-white/70 px-12 py-10 shadow-sm backdrop-blur-md',
-        'dark:bg-zinc-900/70'
+        'dark:bg-zinc-900/70',
+        'flex justify-center'
       )}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
@@ -133,33 +133,49 @@ export function ChatQueryInterface({ organizationId }: ChatQueryInterfaceProps) 
           ))}
         </SelectContent>
       </Select>
-      <Select
+      <Combobox
         value={effectiveSlot3}
-        onValueChange={(v) => setSlot3(v)}
-        disabled={slot3Options.length === 0 || !!isLoading}
+        onValueChange={(v) => setSlot3(v as Slot3Value)}
+        items={slot3Options}
       >
-        <SelectTrigger
-          className="h-14 min-w-48 border-dashed border-primary/30 bg-transparent text-lg font-medium"
-          size="default"
-        >
-          <SelectValue
-            placeholder={
-              isLoading
-                ? 'Loading...'
-                : hasNoFacets
-                  ? 'No data yet'
-                  : 'Select...'
-            }
-          />
-        </SelectTrigger>
-        <SelectContent>
-          {slot3Options.map((opt) => (
-            <SelectItem key={opt.value} value={opt.value}>
-              {opt.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+        <ComboboxInput
+          className={cn(
+            'h-9 min-w-52 border-dashed border-primary/30 bg-transparent text-lg font-medium',
+            '**:data-[slot=input-group-control]:text-lg',
+            '**:data-[slot=input-group-control]:font-medium',
+            '**:data-[slot=input-group-control]:text-foreground',
+            '**:data-[slot=input-group-control]:placeholder:text-muted-foreground'
+          )}
+          disabled={slot3Options.length === 0 || !!isLoading}
+          placeholder={
+            isLoading
+              ? 'Loading...'
+              : hasNoFacets
+                ? 'No data yet'
+                : 'Search or select...'
+          }
+          showClear
+        />
+        <ComboboxContent>
+          <ComboboxEmpty>No matches found.</ComboboxEmpty>
+          <ComboboxList className="max-h-90">
+            <ComboboxCollection>
+              {(item) => (
+                <ComboboxItem key={item.value} value={item.value}>
+                  {item.label}
+                </ComboboxItem>
+              )}
+            </ComboboxCollection>
+          </ComboboxList>
+        </ComboboxContent>
+      </Combobox>
+      <HoverBorderGradient
+        containerClassName="rounded-xl border-blue-400"
+        as="button"
+        className="dark:bg-black bg-white text-black dark:text-white flex items-center space-x-2 h-9 w-24 text-center justify-center "
+      >
+        Search
+      </HoverBorderGradient>
     </motion.div>
   )
 }

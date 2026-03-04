@@ -68,6 +68,7 @@ export default defineSchema({
   importQueue: defineTable({
     organizationId: v.id('organizations'),
     linkedInUrl: v.string(),
+    email: v.optional(v.string()),
     status: v.union(
       v.literal('pending'),
       v.literal('processing'),

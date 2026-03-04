@@ -2,12 +2,10 @@ import { Link } from '@tanstack/react-router'
 
 import { Button } from '@/components/ui/button'
 
-import DitherOverlay from './DitherOverlay'
-
 export default function CTA() {
   return (
     <section className="mx-auto max-w-6xl px-6 py-16 md:py-20">
-      <DitherOverlay className="rounded-2xl border border-zinc-300 bg-zinc-100/80 px-6 py-12 text-center shadow-lg shadow-zinc-900/10 md:px-12">
+      <div className="card-gradient-overlay rounded-2xl border border-zinc-300 bg-zinc-100/80 px-6 py-12 text-center shadow-lg shadow-zinc-900/10 md:px-12">
         <div className="relative z-10">
           <h2 className="mb-3 text-3xl tracking-tight text-zinc-950 md:text-4xl">
             Find the right person faster.
@@ -24,7 +22,7 @@ export default function CTA() {
             <Link to="/demo/convex">Try Conduit</Link>
           </Button>
         </div>
-      </DitherOverlay>
+      </div>
     </section>
   )
 }

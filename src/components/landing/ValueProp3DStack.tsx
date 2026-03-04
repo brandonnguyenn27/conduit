@@ -18,7 +18,7 @@ const cards: StackCard[] = [
   },
   {
     title: 'Connect',
-    body: 'See rich profile context instantly so introductions and cross-team outreach feel effortless.',
+    body: 'See rich profile context instantly so reaching out and building connections across your organization feels natural.',
     icon: Users,
   },
   {
@@ -55,7 +55,7 @@ export default function ValueProp3DStack() {
             whileFocus={{ y: -18, z: 50, scale: 1.05, rotateX: 5 }}
             transition={{ type: 'tween', duration: 0.08, ease: 'linear' }}
             className={cn(
-              'value-stack-card dither-overlay relative w-full max-w-sm rounded-2xl border border-zinc-300/90 bg-zinc-50/90 p-6 shadow-xl shadow-zinc-900/10 transition-transform duration-300 will-change-transform hover:shadow-2xl hover:shadow-zinc-900/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-700/30 md:absolute md:w-82',
+              'value-stack-card card-gradient-overlay relative w-full max-w-sm rounded-2xl border border-zinc-300/90 bg-zinc-50/90 p-6 shadow-xl shadow-zinc-900/10 transition-transform duration-300 will-change-transform hover:shadow-2xl hover:shadow-zinc-900/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-700/30 md:absolute md:w-82',
               desktopTransforms[index]
             )}
             style={{ zIndex }}

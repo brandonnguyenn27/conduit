@@ -3,19 +3,8 @@ import React from "react";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 
-const DEFAULT_PRIMARY = "#18CCFC";
-const DEFAULT_SECONDARY = "#6344F5";
-
 export const BackgroundBeams = React.memo(
-  ({
-    className,
-    primaryColor = DEFAULT_PRIMARY,
-    secondaryColor = DEFAULT_SECONDARY,
-  }: {
-    className?: string;
-    primaryColor?: string;
-    secondaryColor?: string;
-  }) => {
+  ({ className }: { className?: string }) => {
     const paths = [
       "M-380 -189C-380 -189 -312 216 152 343C616 470 684 875 684 875",
       "M-373 -197C-373 -197 -305 208 159 335C623 462 691 867 691 867",
@@ -120,13 +109,13 @@ export const BackgroundBeams = React.memo(
                   duration: Math.random() * 10 + 10,
                   ease: "easeInOut",
                   repeat: Infinity,
-                  delay: Math.random() * 10,
+                  delay: Math.random() * 2,
                 }}
               >
-                <stop stopColor={primaryColor} stopOpacity="0"></stop>
-                <stop stopColor={primaryColor}></stop>
-                <stop offset="32.5%" stopColor={secondaryColor}></stop>
-                <stop offset="100%" stopColor={secondaryColor} stopOpacity="0"></stop>
+                <stop stopColor="#18CCFC" stopOpacity="0"></stop>
+                <stop stopColor="#18CCFC"></stop>
+                <stop offset="32.5%" stopColor="#6344F5"></stop>
+                <stop offset="100%" stopColor="#AE48FF" stopOpacity="0"></stop>
               </motion.linearGradient>
             ))}
 

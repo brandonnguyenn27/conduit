@@ -8,11 +8,13 @@
     "preview": "vite preview",
     "test": "vitest run",
     "import:linkedin-csv": "node --experimental-strip-types scripts/import-linkedin-csv.ts",
+    "backfill:organization-facets": "node --experimental-strip-types scripts/backfill-organization-facets.ts",
     "format": "biome format",
     "lint": "biome lint",
     "check": "biome check"
   },
   "dependencies": {
+    "@base-ui/react": "^1.2.0",
     "@convex-dev/better-auth": "0.10.13",
     "@convex-dev/react-query": "0.1.0",
     "@tailwindcss/vite": "^4.1.18",

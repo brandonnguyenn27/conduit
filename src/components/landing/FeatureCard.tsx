@@ -26,8 +26,8 @@ export default function FeatureCard({
         <div className="rounded-full border border-zinc-300 bg-white p-2">{icon}</div>
         <h3 className="text-xl font-semibold tracking-tight">{title}</h3>
       </div>
-      <div className="dither-overlay mb-4 rounded-lg border border-zinc-300 transition-transform duration-300 group-hover:scale-[1.06] group-hover:-rotate-[0.6deg]">
-        <div className="dither-threshold relative z-0 flex aspect-video items-center justify-center bg-linear-to-br from-zinc-200 to-zinc-300 text-xs uppercase tracking-[0.2em] text-zinc-700">
+      <div className="card-gradient-overlay mb-4 rounded-lg border border-zinc-300 transition-transform duration-300 group-hover:scale-[1.06] group-hover:-rotate-[0.6deg]">
+        <div className="relative z-0 flex aspect-video items-center justify-center bg-linear-to-br from-zinc-200 to-zinc-300 text-xs uppercase tracking-[0.2em] text-zinc-700">
           Placeholder Image
         </div>
       </div>

@@ -23,21 +23,21 @@ const features = [
   {
     title: 'Rich Profiles',
     description:
-      'Open clean profile pages with relevant work history, education, and strengths at a glance.',
+      'Open clean profile pages with relevant work history, education, and skills at a glance.',
     icon: <Users className="h-4 w-4" />,
     hoverTilt: -2,
   },
   {
     title: 'Saved Connections',
     description:
-      'Bookmark coworkers and collaborators so your key network is always one click away.',
+      'Bookmark members so your key network is always one click away.',
     icon: <Heart className="h-4 w-4" />,
     hoverTilt: -1,
   },
   {
     title: 'Org-Aware Discovery',
     description:
-      'Explore who is connected to what team so you can route requests and intros efficiently.',
+      'Explore members, alumni, and shared affiliations so you can find the right person for an intro, event, or opportunity.',
     icon: <Waypoints className="h-4 w-4" />,
     hoverTilt: 3,
   },
@@ -51,7 +51,7 @@ const features = [
   {
     title: 'Smart Suggestions',
     description:
-      'Get relevant coworker suggestions as you explore profiles so warm intros happen faster.',
+      'Get relevant member and alumni suggestions as you browse so you can make warm intros and reach outs faster.',
     icon: <Brain className="h-4 w-4" />,
     hoverTilt: 1,
   },
