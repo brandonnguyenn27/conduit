@@ -1,0 +1,153 @@
+'use node'
+
+import { randomBytes, timingSafeEqual } from 'node:crypto'
+import { pbkdf2Sync } from 'node:crypto'
+import { action } from '../../_generated/server'
+import { internal } from '../../_generated/api'
+import { v } from 'convex/values'
+
+const ONBOARDING_TOKEN_TTL_MS = 15 * 60 * 1000
+const HASH_PREFIX = 'pbkdf2_sha256'
+const HASH_SEP = '$'
+
+type VerifyOrgPasswordResult =
+  | {
+      ok: true
+      joinToken: string
+      organizationId: string
+      expiresAt: number
+    }
+  | {
+      ok: false
+      error: 'INVALID_ORGANIZATION_PASSWORD'
+    }
+
+type GetProfileByEmailResult =
+  | {
+      ok: true
+      profileId: string
+      email: string
+      name: string
+    }
+  | {
+      ok: false
+      error: 'NO_MATCHING_EMAIL'
+    }
+
+function decodeBase64(value: string): Uint8Array {
+  return Uint8Array.from(Buffer.from(value, 'base64'))
+}
+
+function secureEquals(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false
+  return timingSafeEqual(Buffer.from(a), Buffer.from(b))
+}
+
+async function verifyPbkdf2Hash(password: string, storedHash: string): Promise<boolean> {
+  const [algo, iterationsRaw, saltB64, expectedB64] = storedHash.split(HASH_SEP)
+  if (algo !== HASH_PREFIX || !iterationsRaw || !saltB64 || !expectedB64) return false
+  const iterations = Number(iterationsRaw)
+  if (!Number.isInteger(iterations) || iterations < 100_000) return false
+
+  const salt = decodeBase64(saltB64)
+  const expected = decodeBase64(expectedB64)
+  if (salt.length === 0 || expected.length === 0) return false
+
+  const derived = new Uint8Array(
+    pbkdf2Sync(password, Buffer.from(salt), iterations, expected.length, 'sha256')
+  )
+
+  return secureEquals(derived, expected)
+}
+
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase()
+}
+
+export const verifyOrgPassword = action({
+  args: {
+    organizationId: v.id('organizations'),
+    password: v.string(),
+  },
+  handler: async (ctx, args): Promise<VerifyOrgPasswordResult> => {
+    const organization = await ctx.runQuery(
+      internal.functions.onboarding.queries.getOrganizationJoinConfig,
+      {
+        organizationId: args.organizationId,
+      }
+    )
+    if (!organization?.joinPasswordHash) {
+      return {
+        ok: false,
+        error: 'INVALID_ORGANIZATION_PASSWORD',
+      }
+    }
+
+    const isValid = await verifyPbkdf2Hash(args.password, organization.joinPasswordHash)
+    if (!isValid) {
+      return {
+        ok: false,
+        error: 'INVALID_ORGANIZATION_PASSWORD',
+      }
+    }
+
+    const token = randomBytes(24).toString('hex')
+    const expiresAt = Date.now() + ONBOARDING_TOKEN_TTL_MS
+    await ctx.runMutation(internal.functions.onboarding.mutations.createToken, {
+      token,
+      organizationId: args.organizationId,
+      expiresAt,
+    })
+
+    return {
+      ok: true,
+      joinToken: token,
+      organizationId: args.organizationId as string,
+      expiresAt,
+    }
+  },
+})
+
+export const getProfileByEmail = action({
+  args: {
+    joinToken: v.string(),
+    email: v.string(),
+  },
+  handler: async (ctx, args): Promise<GetProfileByEmailResult> => {
+    const token = await ctx.runQuery(
+      internal.functions.onboarding.queries.getOnboardingToken,
+      {
+        token: args.joinToken,
+      }
+    )
+
+    if (!token || token.expiresAt <= Date.now()) {
+      return {
+        ok: false,
+        error: 'NO_MATCHING_EMAIL',
+      }
+    }
+
+    const profile = await ctx.runQuery(
+      internal.functions.onboarding.queries.getProfileByEmailInOrganization,
+      {
+        organizationId: token.organizationId,
+        email: normalizeEmail(args.email),
+      }
+    )
+
+    if (!profile) {
+      return {
+        ok: false,
+        error: 'NO_MATCHING_EMAIL',
+      }
+    }
+
+    return {
+      ok: true,
+      profileId: profile._id as string,
+      email: profile.email ?? normalizeEmail(args.email),
+      name: profile.name,
+    }
+  },
+})

@@ -9,9 +9,11 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as HomeRouteRouteImport } from './routes/home/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as HomeIndexRouteImport } from './routes/home/index'
+import { Route as HomeSearchRouteImport } from './routes/home/search'
 import { Route as HomeSavedRouteImport } from './routes/home/saved'
 import { Route as HomeProfileRouteImport } from './routes/home/profile'
 import { Route as DemoTanstackQueryRouteImport } from './routes/demo/tanstack-query'
@@ -21,6 +23,11 @@ import { Route as DemoFormSimpleRouteImport } from './routes/demo/form.simple'
 import { Route as DemoFormAddressRouteImport } from './routes/demo/form.address'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HomeRouteRoute = HomeRouteRouteImport.update({
   id: '/home',
   path: '/home',
@@ -34,6 +41,11 @@ const IndexRoute = IndexRouteImport.update({
 const HomeIndexRoute = HomeIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => HomeRouteRoute,
+} as any)
+const HomeSearchRoute = HomeSearchRouteImport.update({
+  id: '/search',
+  path: '/search',
   getParentRoute: () => HomeRouteRoute,
 } as any)
 const HomeSavedRoute = HomeSavedRouteImport.update({
@@ -80,11 +92,13 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/home': typeof HomeRouteRouteWithChildren
+  '/onboarding': typeof OnboardingRoute
   '/demo/better-auth': typeof DemoBetterAuthRoute
   '/demo/convex': typeof DemoConvexRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/home/profile': typeof HomeProfileRoute
   '/home/saved': typeof HomeSavedRoute
+  '/home/search': typeof HomeSearchRoute
   '/home/': typeof HomeIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/demo/form/address': typeof DemoFormAddressRoute
@@ -92,11 +106,13 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/onboarding': typeof OnboardingRoute
   '/demo/better-auth': typeof DemoBetterAuthRoute
   '/demo/convex': typeof DemoConvexRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/home/profile': typeof HomeProfileRoute
   '/home/saved': typeof HomeSavedRoute
+  '/home/search': typeof HomeSearchRoute
   '/home': typeof HomeIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/demo/form/address': typeof DemoFormAddressRoute
@@ -106,11 +122,13 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/home': typeof HomeRouteRouteWithChildren
+  '/onboarding': typeof OnboardingRoute
   '/demo/better-auth': typeof DemoBetterAuthRoute
   '/demo/convex': typeof DemoConvexRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/home/profile': typeof HomeProfileRoute
   '/home/saved': typeof HomeSavedRoute
+  '/home/search': typeof HomeSearchRoute
   '/home/': typeof HomeIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/demo/form/address': typeof DemoFormAddressRoute
@@ -121,11 +139,13 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/home'
+    | '/onboarding'
     | '/demo/better-auth'
     | '/demo/convex'
     | '/demo/tanstack-query'
     | '/home/profile'
     | '/home/saved'
+    | '/home/search'
     | '/home/'
     | '/api/auth/$'
     | '/demo/form/address'
@@ -133,11 +153,13 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/onboarding'
     | '/demo/better-auth'
     | '/demo/convex'
     | '/demo/tanstack-query'
     | '/home/profile'
     | '/home/saved'
+    | '/home/search'
     | '/home'
     | '/api/auth/$'
     | '/demo/form/address'
@@ -146,11 +168,13 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/home'
+    | '/onboarding'
     | '/demo/better-auth'
     | '/demo/convex'
     | '/demo/tanstack-query'
     | '/home/profile'
     | '/home/saved'
+    | '/home/search'
     | '/home/'
     | '/api/auth/$'
     | '/demo/form/address'
@@ -160,6 +184,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   HomeRouteRoute: typeof HomeRouteRouteWithChildren
+  OnboardingRoute: typeof OnboardingRoute
   DemoBetterAuthRoute: typeof DemoBetterAuthRoute
   DemoConvexRoute: typeof DemoConvexRoute
   DemoTanstackQueryRoute: typeof DemoTanstackQueryRoute
@@ -170,6 +195,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/home': {
       id: '/home'
       path: '/home'
@@ -189,6 +221,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/home/'
       preLoaderRoute: typeof HomeIndexRouteImport
+      parentRoute: typeof HomeRouteRoute
+    }
+    '/home/search': {
+      id: '/home/search'
+      path: '/search'
+      fullPath: '/home/search'
+      preLoaderRoute: typeof HomeSearchRouteImport
       parentRoute: typeof HomeRouteRoute
     }
     '/home/saved': {
@@ -253,12 +292,14 @@ declare module '@tanstack/react-router' {
 interface HomeRouteRouteChildren {
   HomeProfileRoute: typeof HomeProfileRoute
   HomeSavedRoute: typeof HomeSavedRoute
+  HomeSearchRoute: typeof HomeSearchRoute
   HomeIndexRoute: typeof HomeIndexRoute
 }
 
 const HomeRouteRouteChildren: HomeRouteRouteChildren = {
   HomeProfileRoute: HomeProfileRoute,
   HomeSavedRoute: HomeSavedRoute,
+  HomeSearchRoute: HomeSearchRoute,
   HomeIndexRoute: HomeIndexRoute,
 }
 
@@ -269,6 +310,7 @@ const HomeRouteRouteWithChildren = HomeRouteRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   HomeRouteRoute: HomeRouteRouteWithChildren,
+  OnboardingRoute: OnboardingRoute,
   DemoBetterAuthRoute: DemoBetterAuthRoute,
   DemoConvexRoute: DemoConvexRoute,
   DemoTanstackQueryRoute: DemoTanstackQueryRoute,

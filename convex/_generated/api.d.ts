@@ -21,6 +21,9 @@ import type * as functions_favorites_queries from "../functions/favorites/querie
 import type * as functions_importQueue_helpers from "../functions/importQueue/helpers.js";
 import type * as functions_importQueue_mutations from "../functions/importQueue/mutations.js";
 import type * as functions_importQueue_queries from "../functions/importQueue/queries.js";
+import type * as functions_onboarding_actions from "../functions/onboarding/actions.js";
+import type * as functions_onboarding_mutations from "../functions/onboarding/mutations.js";
+import type * as functions_onboarding_queries from "../functions/onboarding/queries.js";
 import type * as functions_organizations_mutations from "../functions/organizations/mutations.js";
 import type * as functions_organizations_queries from "../functions/organizations/queries.js";
 import type * as functions_profiles_helpers from "../functions/profiles/helpers.js";
@@ -64,6 +67,9 @@ declare const fullApi: ApiFromModules<{
   "functions/importQueue/helpers": typeof functions_importQueue_helpers;
   "functions/importQueue/mutations": typeof functions_importQueue_mutations;
   "functions/importQueue/queries": typeof functions_importQueue_queries;
+  "functions/onboarding/actions": typeof functions_onboarding_actions;
+  "functions/onboarding/mutations": typeof functions_onboarding_mutations;
+  "functions/onboarding/queries": typeof functions_onboarding_queries;
   "functions/organizations/mutations": typeof functions_organizations_mutations;
   "functions/organizations/queries": typeof functions_organizations_queries;
   "functions/profiles/helpers": typeof functions_profiles_helpers;

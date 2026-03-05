@@ -31,7 +31,7 @@ export const CHAT_QUERY_CONFIG: ChatQueryMadLibConfig = {
   },
   slot2ToFacet: {
     works_at: 'companies',
-    studied: 'schools',
+    studied: 'majors',
     studies: 'majors',
   },
 }

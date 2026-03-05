@@ -32,6 +32,7 @@ export default defineSchema({
     slug: v.string(),
     logoUrl: v.optional(v.string()),
     adminEmail: v.optional(v.string()),
+    joinPasswordHash: v.optional(v.string()),
     createdAt: v.number(),
   }).index('by_slug', ['slug']),
 
@@ -60,10 +61,20 @@ export default defineSchema({
   })
     .index('by_organization_linkedin', ['organizationId', 'linkedInUrl'])
     .index('by_organization_claimed', ['organizationId', 'claimedByUserId'])
+    .index('by_organization_email', ['organizationId', 'email'])
     .searchIndex('by_search_text', {
       searchField: 'searchText',
       filterFields: ['organizationId'],
     }),
+
+  onboardingTokens: defineTable({
+    token: v.string(),
+    organizationId: v.id('organizations'),
+    expiresAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index('by_token', ['token'])
+    .index('by_organization', ['organizationId']),
 
   importQueue: defineTable({
     organizationId: v.id('organizations'),

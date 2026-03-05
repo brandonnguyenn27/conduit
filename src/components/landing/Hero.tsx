@@ -50,19 +50,10 @@ export default function Hero() {
               size="lg"
               className="btn-glow-border-inner-dark h-12 px-8 text-base md:h-14 md:px-10 md:text-lg"
             >
-              <Link to="/home">Get Started</Link>
+              <Link to="/onboarding">Get Started</Link>
             </Button>
           </span>
-          <span className="btn-glow-border-light">
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="btn-glow-border-inner-light h-12 px-8 text-base md:h-14 md:px-10 md:text-lg"
-            >
-              <Link to="/demo/tanstack-query">Explore Profiles</Link>
-            </Button>
-          </span>
+          
         </div>
       </div>
     </section>

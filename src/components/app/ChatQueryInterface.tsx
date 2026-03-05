@@ -170,7 +170,7 @@ export function ChatQueryInterface({ organizationId }: ChatQueryInterfaceProps) 
         </ComboboxContent>
       </Combobox>
       <HoverBorderGradient
-        containerClassName="rounded-xl border-blue-400"
+        containerClassName="rounded-xl"
         as="button"
         className="dark:bg-black bg-white text-black dark:text-white flex items-center space-x-2 h-9 w-24 text-center justify-center "
       >

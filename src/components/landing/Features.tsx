@@ -70,11 +70,11 @@ export default function Features() {
           </p>
         </div>
       </div>
-      <div className="grid gap-4 md:grid-cols-2 overflow-visible">
+      <div className="grid gap-4 overflow-visible md:grid-cols-2">
         {features.map((feature) => {
           const { hoverTilt, ...rest } = feature
           return (
-            <div key={feature.title} className="overflow-visible p-6">
+            <div key={feature.title} className="h-full overflow-visible p-6">
               <FeatureCard
                 {...rest}
                 hoverTiltClass={TILT_CLASSES[hoverTilt]}

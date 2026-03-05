@@ -1,5 +1,6 @@
 import { mutation } from '../../_generated/server'
 import { v } from 'convex/values'
+import { authComponent } from '../../auth'
 
 export const create = mutation({
   args: {
@@ -43,5 +44,74 @@ export const remove = mutation({
   args: { id: v.id('appUsers') },
   handler: async (ctx, args) => {
     await ctx.db.delete(args.id)
+  },
+})
+
+export const completeOnboarding = mutation({
+  args: {
+    organizationId: v.id('organizations'),
+    profileId: v.id('profiles'),
+  },
+  handler: async (ctx, args) => {
+    const user = await authComponent.safeGetAuthUser(ctx)
+    if (!user) {
+      throw new Error('Unauthorized')
+    }
+
+    const appUser = await ctx.db
+      .query('appUsers')
+      .withIndex('by_better_auth_user', (q) => q.eq('betterAuthUserId', user._id))
+      .unique()
+
+    if (!appUser) {
+      throw new Error('App user not found')
+    }
+
+    const defaultOrganization = await ctx.db
+      .query('organizations')
+      .withIndex('by_slug', (q) => q.eq('slug', 'default'))
+      .unique()
+
+    if (!defaultOrganization) {
+      throw new Error('Default organization not configured')
+    }
+
+    const profile = await ctx.db.get(args.profileId)
+    if (!profile || profile.organizationId !== args.organizationId) {
+      throw new Error('Profile not found for organization')
+    }
+
+    if (profile.claimedByUserId && profile.claimedByUserId !== user._id) {
+      throw new Error('Profile already claimed')
+    }
+
+    const isAlreadyLinked =
+      appUser.organizationId === args.organizationId && appUser.profileId === args.profileId
+    if (isAlreadyLinked) {
+      if (!profile.claimedByUserId) {
+        await ctx.db.patch(profile._id, { claimedByUserId: user._id })
+      }
+      return appUser._id
+    }
+
+    const isUnfinishedUser =
+      appUser.organizationId === defaultOrganization._id && appUser.profileId === undefined
+
+    if (!isUnfinishedUser) {
+      throw new Error('Onboarding already completed')
+    }
+
+    await ctx.db.patch(appUser._id, {
+      organizationId: args.organizationId,
+      profileId: args.profileId,
+      email: profile.email ?? appUser.email,
+      name: profile.name,
+    })
+
+    if (!profile.claimedByUserId) {
+      await ctx.db.patch(profile._id, { claimedByUserId: user._id })
+    }
+
+    return appUser._id
   },
 })

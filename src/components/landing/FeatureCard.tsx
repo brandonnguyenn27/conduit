@@ -18,7 +18,7 @@ export default function FeatureCard({
   return (
     <article
       className={cn(
-        'group rounded-xl border border-zinc-300/90 bg-zinc-50/90 p-5 shadow-lg shadow-zinc-900/5 transition-transform duration-300 will-change-transform hover:-translate-y-4 hover:scale-[1.03] hover:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.15)]',
+        'group flex h-full flex-col rounded-xl border border-zinc-300/90 bg-zinc-50/90 p-5 shadow-lg shadow-zinc-900/5 transition-transform duration-300 will-change-transform hover:-translate-y-4 hover:scale-[1.03] hover:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.15)]',
         hoverTiltClass
       )}
     >
