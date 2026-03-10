@@ -9,6 +9,12 @@ export default function Footer() {
           <Link to="/" className="transition-opacity hover:opacity-70">
             Home
           </Link>
+          <Link to="/onboarding" className="transition-opacity hover:opacity-70">
+            Sign up
+          </Link>
+          <Link to="/login" className="transition-opacity hover:opacity-70">
+            Log in
+          </Link>
           <a
             href="https://tanstack.com/start"
             target="_blank"
@@ -17,9 +23,6 @@ export default function Footer() {
           >
             Docs
           </a>
-          <Link to="/demo/tanstack-query" className="transition-opacity hover:opacity-70">
-            Query Demo
-          </Link>
         </div>
       </div>
     </footer>

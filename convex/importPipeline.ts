@@ -7,6 +7,12 @@ import { v } from 'convex/values'
 import { getLinkedInProvider, mapToProfile } from './lib/linkedin'
 import { normalizeSearchArrays } from './lib/linkedin/normalize'
 import { buildProfileSearchText } from './lib/search/profileSearchText'
+import {
+  toCompaniesSearchSlugFromExperience,
+  toCompaniesSearchTextFromExperience,
+  toCurrentCompanySlugFromExperience,
+  toEducationSearchSlug,
+} from './functions/profiles/helpers'
 import { PIPELINE_BATCH_SIZE, PIPELINE_NEXT_RUN_AFTER_MS } from './lib/importPipelineConfig'
 
 const LINKEDIN_IN_REGEX = /linkedin\.com\/in\/([^/?]+)/i
@@ -27,6 +33,7 @@ type ClaimedItem = {
   organizationId: Id<'organizations'>
   linkedInUrl: string
   email?: string
+  profileType?: 'alumni' | 'member'
 }
 
 export const processImportQueue = action({
@@ -57,7 +64,11 @@ export const processImportQueue = action({
         const raw = await provider.fetchFullProfile(username)
         const profile = mapToProfile(raw, item.organizationId)
         const email = normalizeEmail(item.email)
-        const profileForImport = email ? { ...profile, email } : profile
+        const profileForImport = {
+          ...profile,
+          ...(email ? { email } : {}),
+          ...(item.profileType ? { profileType: item.profileType } : {}),
+        }
         const normalized = await normalizeSearchArrays({
           education: profileForImport.education,
           experience: profileForImport.experience,
@@ -80,6 +91,16 @@ export const processImportQueue = action({
           companies: profileForImport.companies,
           jobTitles: profileForImport.jobTitles,
         })
+        profileForImport.companiesSearchText =
+          toCompaniesSearchTextFromExperience(profileForImport.experience)
+        profileForImport.companiesSearchSlug =
+          toCompaniesSearchSlugFromExperience(profileForImport.experience)
+        profileForImport.currentCompanySlug =
+          toCurrentCompanySlugFromExperience(profileForImport.experience)
+        profileForImport.educationSearchSlug = toEducationSearchSlug(
+          profileForImport.schools,
+          profileForImport.majors
+        )
         await ctx.runMutation(api.functions.profiles.mutations.upsertFromImport, {
           organizationId: item.organizationId,
           linkedInUrl: item.linkedInUrl,

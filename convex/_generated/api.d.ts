@@ -44,7 +44,10 @@ import type * as lib_linkedin_normalizePrompt from "../lib/linkedin/normalizePro
 import type * as lib_linkedin_normalizeTypes from "../lib/linkedin/normalizeTypes.js";
 import type * as lib_linkedin_provider from "../lib/linkedin/provider.js";
 import type * as lib_linkedin_types from "../lib/linkedin/types.js";
+import type * as lib_profiles_deriveCurrentExperience from "../lib/profiles/deriveCurrentExperience.js";
+import type * as lib_profiles_searchResultDisplay from "../lib/profiles/searchResultDisplay.js";
 import type * as lib_search_profileSearchText from "../lib/search/profileSearchText.js";
+import type * as lib_search_slug from "../lib/search/slug.js";
 import type * as lib_validators from "../lib/validators.js";
 
 import type {
@@ -90,7 +93,10 @@ declare const fullApi: ApiFromModules<{
   "lib/linkedin/normalizeTypes": typeof lib_linkedin_normalizeTypes;
   "lib/linkedin/provider": typeof lib_linkedin_provider;
   "lib/linkedin/types": typeof lib_linkedin_types;
+  "lib/profiles/deriveCurrentExperience": typeof lib_profiles_deriveCurrentExperience;
+  "lib/profiles/searchResultDisplay": typeof lib_profiles_searchResultDisplay;
   "lib/search/profileSearchText": typeof lib_search_profileSearchText;
+  "lib/search/slug": typeof lib_search_slug;
   "lib/validators": typeof lib_validators;
 }>;
 

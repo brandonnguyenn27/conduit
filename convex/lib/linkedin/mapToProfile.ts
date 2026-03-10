@@ -1,6 +1,7 @@
 import type { Id } from '../../_generated/dataModel'
-import type { RawLinkedInProfile } from './types'
-import { buildProfileSearchText } from '../search/profileSearchText'
+import type { RawExperience, RawLinkedInProfile } from './types'
+import { buildCompaniesSearchText, buildProfileSearchText } from '../search/profileSearchText'
+import { buildSlugBlob, slugifySearchToken } from '../search/slug'
 
 export interface ProfileInsertPayload {
   organizationId: Id<'organizations'>
@@ -35,6 +36,12 @@ export interface ProfileInsertPayload {
   companies: string[]
   jobTitles: string[]
   currentCompany?: string
+  currentExperience?: RawExperience
+  currentExperienceSearchText?: string
+  companiesSearchText?: string
+  companiesSearchSlug?: string
+  currentCompanySlug?: string
+  educationSearchSlug?: string
   email?: string
   searchText: string
 }
@@ -56,19 +63,22 @@ function isCurrentExperience(experience: RawLinkedInProfile['experience'][number
 export function deriveCurrentOrMostRecentCompany(
   experiences: RawLinkedInProfile['experience']
 ): string | undefined {
-  const withCompany = experiences
-    .map((experience) => ({
-      ...experience,
-      companyName: experience.companyName.trim(),
-    }))
-    .filter((experience) => experience.companyName.length > 0)
+  const exp = deriveCurrentOrMostRecentExperience(experiences)
+  return exp?.companyName
+}
 
+export function deriveCurrentOrMostRecentExperience(
+  experiences: RawLinkedInProfile['experience']
+): RawExperience | undefined {
+  const withCompany = experiences
+    .map((exp) => ({ ...exp, companyName: exp.companyName.trim() }))
+    .filter((exp) => exp.companyName.length > 0)
   if (withCompany.length === 0) return undefined
 
   const current = [...withCompany].filter(isCurrentExperience)
   if (current.length > 0) {
     current.sort((a, b) => scoreDate(b.start) - scoreDate(a.start))
-    return current[0].companyName
+    return current[0]
   }
 
   const ended = [...withCompany]
@@ -77,7 +87,11 @@ export function deriveCurrentOrMostRecentCompany(
     if (endDelta !== 0) return endDelta
     return scoreDate(b.start) - scoreDate(a.start)
   })
-  return ended[0].companyName
+  return ended[0]
+}
+
+function buildCurrentExperienceSearchText(companyName: string, title: string): string {
+  return [companyName.trim(), title.trim()].filter(Boolean).join(' ')
 }
 
 export function mapToProfile(
@@ -91,6 +105,10 @@ export function mapToProfile(
   const companies = [...new Set(raw.experience.map((e) => e.companyName).filter(Boolean))]
   const jobTitles = [...new Set(raw.experience.map((e) => e.title).filter(Boolean))]
   const currentCompany = deriveCurrentOrMostRecentCompany(raw.experience)
+  const currentExperience = deriveCurrentOrMostRecentExperience(raw.experience)
+  const currentExperienceSearchText = currentExperience
+    ? buildCurrentExperienceSearchText(currentExperience.companyName, currentExperience.title)
+    : undefined
   const name = `${raw.firstName} ${raw.lastName}`.trim()
   const headline = raw.headline
   const summary = raw.summary
@@ -109,6 +127,10 @@ export function mapToProfile(
     companies,
     jobTitles,
   })
+  const companiesSearchText = buildCompaniesSearchText(companies)
+  const companiesSearchSlug = buildSlugBlob(raw.experience.map((e) => e.companyName))
+  const currentCompanySlug = slugifySearchToken(currentExperience?.companyName ?? '') || undefined
+  const educationSearchSlug = buildSlugBlob([...schools, ...majors])
   return {
     organizationId,
     linkedInUrl,
@@ -142,6 +164,12 @@ export function mapToProfile(
     companies,
     jobTitles,
     currentCompany,
+    currentExperience,
+    currentExperienceSearchText,
+    companiesSearchText,
+    companiesSearchSlug,
+    currentCompanySlug,
+    educationSearchSlug,
     searchText,
   }
 }

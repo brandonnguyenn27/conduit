@@ -115,3 +115,48 @@ export const completeOnboarding = mutation({
     return appUser._id
   },
 })
+
+export const adminBypassSetOrganization = mutation({
+  args: {
+    organizationId: v.id('organizations'),
+  },
+  handler: async (ctx, args) => {
+    const user = await authComponent.safeGetAuthUser(ctx)
+    if (!user) {
+      throw new Error('Unauthorized')
+    }
+
+    const organization = await ctx.db.get(args.organizationId)
+    if (!organization) {
+      throw new Error('Organization not found')
+    }
+
+    if (!user.email) {
+      throw new Error('Authenticated admin user is missing email')
+    }
+    const email = user.email
+    const name = user.name ?? user.email
+
+    const appUser = await ctx.db
+      .query('appUsers')
+      .withIndex('by_better_auth_user', (q) => q.eq('betterAuthUserId', user._id))
+      .unique()
+
+    if (appUser) {
+      await ctx.db.patch(appUser._id, {
+        organizationId: args.organizationId,
+        email,
+        name,
+      })
+      return appUser._id
+    }
+
+    return await ctx.db.insert('appUsers', {
+      betterAuthUserId: user._id,
+      organizationId: args.organizationId,
+      email,
+      name,
+      createdAt: Date.now(),
+    })
+  },
+})

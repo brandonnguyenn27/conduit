@@ -13,6 +13,7 @@ export const getChatQueryOptions = query({
     if (!doc) return null
     return {
       companies: doc.companies,
+      currentCompanies: doc.currentCompanies ?? [],
       majors: doc.majors,
       schools: doc.schools,
     }

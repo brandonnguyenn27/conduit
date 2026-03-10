@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import type { Id } from '@convex/_generated/dataModel'
 import { useForm } from '@tanstack/react-form'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
@@ -87,6 +87,12 @@ function OnboardingRoute() {
           <div className="mb-6">
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Onboarding</p>
             <h1 className="mt-2 text-2xl font-semibold tracking-tight">Create your account</h1>
+            <Link
+              to="/login"
+              className="mt-3 inline-flex text-sm text-muted-foreground underline-offset-4 hover:underline"
+            >
+              Already have an account? Log in
+            </Link>
           </div>
 
           <div className="relative flex-1 min-h-[320px] overflow-hidden md:min-h-[380px]">

@@ -6,6 +6,7 @@ Rules:
 - Merge equivalent items (e.g. "Sr. SWE" and "Senior Software Engineer" -> one form).
 - Fix spelling errors and typos (e.g. "huamn resources management" -> "Human Resource Management", "Compter Science" -> "Computer Science").
 - Standardize to title case for majors, schools, and companies.
+- Normalize education degree strings when they appear: "Bachelor's of Science", "Bachelor of Science", "BS", and "B.S" -> "B.S.".
 - Drop empty or placeholder values.
 
 Reply with exactly one JSON object, no markdown or explanation, with keys: majors (array of strings), schools, companies, jobTitles.`

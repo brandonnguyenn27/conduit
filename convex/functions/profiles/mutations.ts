@@ -1,7 +1,15 @@
 import { mutation } from '../../_generated/server'
 import { v } from 'convex/values'
+import { deriveCurrentExperienceFromStored } from '../../lib/profiles/deriveCurrentExperience'
 import { educationEntry, experienceEntry } from '../../lib/validators'
-import { profileInsertValidator, toSearchText } from './helpers'
+import {
+  profileInsertValidator,
+  toCompaniesSearchSlugFromExperience,
+  toCompaniesSearchTextFromExperience,
+  toCurrentCompanySlugFromExperience,
+  toEducationSearchSlug,
+  toSearchText,
+} from './helpers'
 
 export const create = mutation({
   args: profileInsertValidator,
@@ -20,6 +28,10 @@ export const create = mutation({
         companies: args.companies,
         jobTitles: args.jobTitles,
       }),
+      companiesSearchText: toCompaniesSearchTextFromExperience(args.experience),
+      companiesSearchSlug: toCompaniesSearchSlugFromExperience(args.experience),
+      currentCompanySlug: toCurrentCompanySlugFromExperience(args.experience),
+      educationSearchSlug: toEducationSearchSlug(args.schools, args.majors),
     }
     return await ctx.db.insert('profiles', doc)
   },
@@ -73,6 +85,10 @@ export const update = mutation({
         companies: merged.companies,
         jobTitles: merged.jobTitles,
       }),
+      companiesSearchText: toCompaniesSearchTextFromExperience(merged.experience),
+      companiesSearchSlug: toCompaniesSearchSlugFromExperience(merged.experience),
+      currentCompanySlug: toCurrentCompanySlugFromExperience(merged.experience),
+      educationSearchSlug: toEducationSearchSlug(merged.schools, merged.majors),
     })
     return id
   },
@@ -114,6 +130,10 @@ export const upsertFromImport = mutation({
         companies: args.profile.companies,
         jobTitles: args.profile.jobTitles,
       }),
+      companiesSearchText: toCompaniesSearchTextFromExperience(args.profile.experience),
+      companiesSearchSlug: toCompaniesSearchSlugFromExperience(args.profile.experience),
+      currentCompanySlug: toCurrentCompanySlugFromExperience(args.profile.experience),
+      educationSearchSlug: toEducationSearchSlug(args.profile.schools, args.profile.majors),
     }
     if (existing) {
       await ctx.db.patch(existing._id, doc)
@@ -162,6 +182,148 @@ export const backfillSearchText = mutation({
       updated++
     }
 
+    return { scanned: docs.length, updated }
+  },
+})
+
+export const backfillCompaniesSearchText = mutation({
+  args: {
+    limit: v.optional(v.number()),
+    organizationId: v.optional(v.id('organizations')),
+  },
+  handler: async (ctx, args) => {
+    const limit = Math.max(1, Math.min(args.limit ?? 100, 500))
+    const scanLimit = Math.max(limit, Math.min(limit * 4, 2000))
+    let docs
+    if (args.organizationId) {
+      docs = await ctx.db
+        .query('profiles')
+        .withIndex('by_organization_linkedin', (q) =>
+          q.eq('organizationId', args.organizationId!)
+        )
+        .take(scanLimit)
+    } else {
+      docs = await ctx.db.query('profiles').take(scanLimit)
+    }
+
+    let updated = 0
+    for (const profile of docs) {
+      if (updated >= limit) break
+      const next = toCompaniesSearchTextFromExperience(profile.experience)
+      if (profile.companiesSearchText === next) continue
+      await ctx.db.patch(profile._id, { companiesSearchText: next })
+      updated++
+    }
+    return { scanned: docs.length, updated }
+  },
+})
+
+export const backfillCompanySlugs = mutation({
+  args: {
+    limit: v.optional(v.number()),
+    organizationId: v.optional(v.id('organizations')),
+  },
+  handler: async (ctx, args) => {
+    const limit = Math.max(1, Math.min(args.limit ?? 100, 500))
+    const scanLimit = Math.max(limit, Math.min(limit * 4, 2000))
+    let docs
+    if (args.organizationId) {
+      docs = await ctx.db
+        .query('profiles')
+        .withIndex('by_organization_linkedin', (q) =>
+          q.eq('organizationId', args.organizationId!)
+        )
+        .take(scanLimit)
+    } else {
+      docs = await ctx.db.query('profiles').take(scanLimit)
+    }
+
+    let updated = 0
+    for (const profile of docs) {
+      if (updated >= limit) break
+      const nextCompaniesSearchSlug = toCompaniesSearchSlugFromExperience(profile.experience)
+      const nextCurrentCompanySlug = toCurrentCompanySlugFromExperience(profile.experience)
+      if (
+        profile.companiesSearchSlug === nextCompaniesSearchSlug &&
+        profile.currentCompanySlug === nextCurrentCompanySlug
+      ) {
+        continue
+      }
+      await ctx.db.patch(profile._id, {
+        companiesSearchSlug: nextCompaniesSearchSlug,
+        currentCompanySlug: nextCurrentCompanySlug,
+      })
+      updated++
+    }
+    return { scanned: docs.length, updated }
+  },
+})
+
+export const backfillEducationSlugs = mutation({
+  args: {
+    limit: v.optional(v.number()),
+    organizationId: v.optional(v.id('organizations')),
+  },
+  handler: async (ctx, args) => {
+    const limit = Math.max(1, Math.min(args.limit ?? 100, 500))
+    const scanLimit = Math.max(limit, Math.min(limit * 4, 2000))
+    let docs
+    if (args.organizationId) {
+      docs = await ctx.db
+        .query('profiles')
+        .withIndex('by_organization_linkedin', (q) =>
+          q.eq('organizationId', args.organizationId!)
+        )
+        .take(scanLimit)
+    } else {
+      docs = await ctx.db.query('profiles').take(scanLimit)
+    }
+
+    let updated = 0
+    for (const profile of docs) {
+      if (updated >= limit) break
+      const nextEducationSearchSlug = toEducationSearchSlug(profile.schools, profile.majors)
+      if (profile.educationSearchSlug === nextEducationSearchSlug) continue
+      await ctx.db.patch(profile._id, { educationSearchSlug: nextEducationSearchSlug })
+      updated++
+    }
+    return { scanned: docs.length, updated }
+  },
+})
+
+export const backfillCurrentExperience = mutation({
+  args: {
+    limit: v.optional(v.number()),
+    organizationId: v.optional(v.id('organizations')),
+  },
+  handler: async (ctx, args) => {
+    const limit = Math.max(1, Math.min(args.limit ?? 100, 500))
+    const scanLimit = Math.max(limit, Math.min(limit * 4, 2000))
+    let docs
+    if (args.organizationId) {
+      docs = await ctx.db
+        .query('profiles')
+        .withIndex('by_organization_linkedin', (q) =>
+          q.eq('organizationId', args.organizationId!)
+        )
+        .take(scanLimit)
+    } else {
+      docs = await ctx.db.query('profiles').take(scanLimit)
+    }
+
+    let updated = 0
+    for (const profile of docs) {
+      if (updated >= limit) break
+      const derived = deriveCurrentExperienceFromStored(profile.experience)
+      if (!derived) continue
+      const nextSearchText = derived.currentExperienceSearchText
+      if (profile.currentExperienceSearchText === nextSearchText) continue
+      await ctx.db.patch(profile._id, {
+        currentExperience: derived.currentExperience,
+        currentExperienceSearchText: nextSearchText,
+      })
+      updated++
+    }
     return { scanned: docs.length, updated }
   },
 })

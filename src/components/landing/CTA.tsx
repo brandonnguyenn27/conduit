@@ -19,7 +19,7 @@ export default function CTA() {
             size="lg"
             className="border border-zinc-900 bg-zinc-900 text-zinc-100 transition-transform hover:-translate-y-0.5 hover:bg-zinc-800"
           >
-            <Link to="/demo/convex">Try Conduit</Link>
+            <Link to="/onboarding">Try Conduit</Link>
           </Button>
         </div>
       </div>

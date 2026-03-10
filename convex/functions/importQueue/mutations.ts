@@ -8,6 +8,12 @@ import {
 } from '../../lib/importPipelineConfig'
 import { MAX_CREATE_MANY, statusValidator, TEST_URL_PREFIX } from './helpers'
 
+function normalizeOptionalEmail(email?: string): string | undefined {
+  const trimmed = email?.trim()
+  if (!trimmed) return undefined
+  return trimmed.toLowerCase()
+}
+
 /** Schedules the next pipeline run (used by the action when a full batch was processed so more may be pending). */
 export const scheduleNextPipelineRun = mutation({
   args: {
@@ -22,17 +28,21 @@ export const scheduleNextPipelineRun = mutation({
   },
 })
 
+const profileTypeValidator = v.optional(v.union(v.literal('alumni'), v.literal('member')))
+
 export const create = mutation({
   args: {
     organizationId: v.id('organizations'),
     linkedInUrl: v.string(),
     email: v.optional(v.string()),
+    profileType: profileTypeValidator,
   },
   handler: async (ctx, args) => {
     const id = await ctx.db.insert('importQueue', {
       organizationId: args.organizationId,
       linkedInUrl: args.linkedInUrl,
-      email: args.email,
+      email: normalizeOptionalEmail(args.email),
+      profileType: args.profileType,
       status: 'pending',
       createdAt: Date.now(),
     })
@@ -52,6 +62,7 @@ export const createMany = mutation({
         v.object({
           linkedInUrl: v.string(),
           email: v.optional(v.string()),
+          profileType: profileTypeValidator,
         })
       )
     ),
@@ -62,6 +73,7 @@ export const createMany = mutation({
       (args.linkedInUrls?.map((linkedInUrl) => ({
         linkedInUrl,
         email: undefined,
+        profileType: undefined,
       })) ??
         [])
 
@@ -80,7 +92,8 @@ export const createMany = mutation({
         ctx.db.insert('importQueue', {
           organizationId: args.organizationId,
           linkedInUrl: row.linkedInUrl,
-          email: row.email,
+          email: normalizeOptionalEmail(row.email),
+          profileType: row.profileType,
           status: 'pending',
           createdAt: now,
         })
@@ -189,10 +202,11 @@ export const claimNextBatch = internalMutation({
       .withIndex('by_status', (q) => q.eq('status', 'pending'))
       .take(args.limit)
     const out: {
-      id: typeof items[0]['_id']
-      organizationId: typeof items[0]['organizationId']
+      id: (typeof items)[0]['_id']
+      organizationId: (typeof items)[0]['organizationId']
       linkedInUrl: string
       email?: string
+      profileType?: 'alumni' | 'member'
     }[] = []
     for (const item of items) {
       await ctx.db.patch(item._id, { status: 'processing' })
@@ -201,6 +215,7 @@ export const claimNextBatch = internalMutation({
         organizationId: item.organizationId,
         linkedInUrl: item.linkedInUrl,
         email: item.email,
+        profileType: item.profileType,
       })
     }
     return out

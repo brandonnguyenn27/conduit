@@ -1,6 +1,7 @@
 import type { Id } from '../../_generated/dataModel'
 import { mutation } from '../../_generated/server'
 import { v } from 'convex/values'
+import { deriveCurrentExperienceFromStored } from '../../lib/profiles/deriveCurrentExperience'
 
 function dedupeSort(values: string[]): string[] {
   const seen = new Set<string>()
@@ -28,17 +29,28 @@ export const rebuildOrganizationFacets = mutation({
       .collect()
 
     const companiesRaw: string[] = []
+    const currentCompaniesRaw: string[] = []
     const majorsRaw: string[] = []
     const schoolsRaw: string[] = []
 
     for (const p of profiles) {
       companiesRaw.push(...p.companies)
       if (p.currentCompany) companiesRaw.push(p.currentCompany)
+
+      let currentCo =
+        p.currentExperience?.companyName?.trim() || p.currentCompany?.trim()
+      if (!currentCo) {
+        const derived = deriveCurrentExperienceFromStored(p.experience)
+        currentCo = derived?.currentExperience.companyName?.trim()
+      }
+      if (currentCo) currentCompaniesRaw.push(currentCo)
+
       majorsRaw.push(...p.majors)
       schoolsRaw.push(...p.schools)
     }
 
     const companies = dedupeSort(companiesRaw)
+    const currentCompanies = dedupeSort(currentCompaniesRaw)
     const majors = dedupeSort(majorsRaw)
     const schools = dedupeSort(schoolsRaw)
 
@@ -53,6 +65,7 @@ export const rebuildOrganizationFacets = mutation({
     const doc = {
       organizationId: args.organizationId,
       companies,
+      currentCompanies,
       majors,
       schools,
       updatedAt: now,

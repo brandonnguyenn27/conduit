@@ -55,7 +55,14 @@ export default defineSchema({
     jobTitles: v.array(v.string()),
     searchText: v.optional(v.string()),
     currentCompany: v.optional(v.string()),
+    currentExperience: v.optional(experienceEntry),
+    currentExperienceSearchText: v.optional(v.string()),
+    companiesSearchText: v.optional(v.string()),
+    companiesSearchSlug: v.optional(v.string()),
+    currentCompanySlug: v.optional(v.string()),
+    educationSearchSlug: v.optional(v.string()),
     class: v.optional(v.string()),
+    profileType: v.optional(v.union(v.literal('alumni'), v.literal('member'))),
     claimedByUserId: v.optional(v.string()),
     email: v.optional(v.string()),
   })
@@ -64,6 +71,26 @@ export default defineSchema({
     .index('by_organization_email', ['organizationId', 'email'])
     .searchIndex('by_search_text', {
       searchField: 'searchText',
+      filterFields: ['organizationId'],
+    })
+    .searchIndex('by_current_experience_search', {
+      searchField: 'currentExperienceSearchText',
+      filterFields: ['organizationId'],
+    })
+    .searchIndex('by_companies_search', {
+      searchField: 'companiesSearchText',
+      filterFields: ['organizationId'],
+    })
+    .searchIndex('by_companies_slug_search', {
+      searchField: 'companiesSearchSlug',
+      filterFields: ['organizationId'],
+    })
+    .searchIndex('by_current_company_slug_search', {
+      searchField: 'currentCompanySlug',
+      filterFields: ['organizationId'],
+    })
+    .searchIndex('by_education_slug_search', {
+      searchField: 'educationSearchSlug',
       filterFields: ['organizationId'],
     }),
 
@@ -80,6 +107,7 @@ export default defineSchema({
     organizationId: v.id('organizations'),
     linkedInUrl: v.string(),
     email: v.optional(v.string()),
+    profileType: v.optional(v.union(v.literal('alumni'), v.literal('member'))),
     status: v.union(
       v.literal('pending'),
       v.literal('processing'),
@@ -95,6 +123,7 @@ export default defineSchema({
   organizationFacets: defineTable({
     organizationId: v.id('organizations'),
     companies: v.array(v.string()),
+    currentCompanies: v.optional(v.array(v.string())),
     majors: v.array(v.string()),
     schools: v.array(v.string()),
     updatedAt: v.number(),

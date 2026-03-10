@@ -10,22 +10,23 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as HomeRouteRouteImport } from './routes/home/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as HomeIndexRouteImport } from './routes/home/index'
 import { Route as HomeSearchRouteImport } from './routes/home/search'
 import { Route as HomeSavedRouteImport } from './routes/home/saved'
 import { Route as HomeProfileRouteImport } from './routes/home/profile'
-import { Route as DemoTanstackQueryRouteImport } from './routes/demo/tanstack-query'
-import { Route as DemoConvexRouteImport } from './routes/demo/convex'
-import { Route as DemoBetterAuthRouteImport } from './routes/demo/better-auth'
-import { Route as DemoFormSimpleRouteImport } from './routes/demo/form.simple'
-import { Route as DemoFormAddressRouteImport } from './routes/demo/form.address'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const OnboardingRoute = OnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HomeRouteRoute = HomeRouteRouteImport.update({
@@ -58,31 +59,6 @@ const HomeProfileRoute = HomeProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => HomeRouteRoute,
 } as any)
-const DemoTanstackQueryRoute = DemoTanstackQueryRouteImport.update({
-  id: '/demo/tanstack-query',
-  path: '/demo/tanstack-query',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DemoConvexRoute = DemoConvexRouteImport.update({
-  id: '/demo/convex',
-  path: '/demo/convex',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DemoBetterAuthRoute = DemoBetterAuthRouteImport.update({
-  id: '/demo/better-auth',
-  path: '/demo/better-auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DemoFormSimpleRoute = DemoFormSimpleRouteImport.update({
-  id: '/demo/form/simple',
-  path: '/demo/form/simple',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DemoFormAddressRoute = DemoFormAddressRouteImport.update({
-  id: '/demo/form/address',
-  path: '/demo/form/address',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -92,105 +68,77 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/home': typeof HomeRouteRouteWithChildren
+  '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
-  '/demo/better-auth': typeof DemoBetterAuthRoute
-  '/demo/convex': typeof DemoConvexRoute
-  '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/home/profile': typeof HomeProfileRoute
   '/home/saved': typeof HomeSavedRoute
   '/home/search': typeof HomeSearchRoute
   '/home/': typeof HomeIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/demo/form/address': typeof DemoFormAddressRoute
-  '/demo/form/simple': typeof DemoFormSimpleRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
-  '/demo/better-auth': typeof DemoBetterAuthRoute
-  '/demo/convex': typeof DemoConvexRoute
-  '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/home/profile': typeof HomeProfileRoute
   '/home/saved': typeof HomeSavedRoute
   '/home/search': typeof HomeSearchRoute
   '/home': typeof HomeIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/demo/form/address': typeof DemoFormAddressRoute
-  '/demo/form/simple': typeof DemoFormSimpleRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/home': typeof HomeRouteRouteWithChildren
+  '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
-  '/demo/better-auth': typeof DemoBetterAuthRoute
-  '/demo/convex': typeof DemoConvexRoute
-  '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/home/profile': typeof HomeProfileRoute
   '/home/saved': typeof HomeSavedRoute
   '/home/search': typeof HomeSearchRoute
   '/home/': typeof HomeIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/demo/form/address': typeof DemoFormAddressRoute
-  '/demo/form/simple': typeof DemoFormSimpleRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/home'
+    | '/login'
     | '/onboarding'
-    | '/demo/better-auth'
-    | '/demo/convex'
-    | '/demo/tanstack-query'
     | '/home/profile'
     | '/home/saved'
     | '/home/search'
     | '/home/'
     | '/api/auth/$'
-    | '/demo/form/address'
-    | '/demo/form/simple'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/login'
     | '/onboarding'
-    | '/demo/better-auth'
-    | '/demo/convex'
-    | '/demo/tanstack-query'
     | '/home/profile'
     | '/home/saved'
     | '/home/search'
     | '/home'
     | '/api/auth/$'
-    | '/demo/form/address'
-    | '/demo/form/simple'
   id:
     | '__root__'
     | '/'
     | '/home'
+    | '/login'
     | '/onboarding'
-    | '/demo/better-auth'
-    | '/demo/convex'
-    | '/demo/tanstack-query'
     | '/home/profile'
     | '/home/saved'
     | '/home/search'
     | '/home/'
     | '/api/auth/$'
-    | '/demo/form/address'
-    | '/demo/form/simple'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   HomeRouteRoute: typeof HomeRouteRouteWithChildren
+  LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRoute
-  DemoBetterAuthRoute: typeof DemoBetterAuthRoute
-  DemoConvexRoute: typeof DemoConvexRoute
-  DemoTanstackQueryRoute: typeof DemoTanstackQueryRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
-  DemoFormAddressRoute: typeof DemoFormAddressRoute
-  DemoFormSimpleRoute: typeof DemoFormSimpleRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -200,6 +148,13 @@ declare module '@tanstack/react-router' {
       path: '/onboarding'
       fullPath: '/onboarding'
       preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/home': {
@@ -244,41 +199,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HomeProfileRouteImport
       parentRoute: typeof HomeRouteRoute
     }
-    '/demo/tanstack-query': {
-      id: '/demo/tanstack-query'
-      path: '/demo/tanstack-query'
-      fullPath: '/demo/tanstack-query'
-      preLoaderRoute: typeof DemoTanstackQueryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/demo/convex': {
-      id: '/demo/convex'
-      path: '/demo/convex'
-      fullPath: '/demo/convex'
-      preLoaderRoute: typeof DemoConvexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/demo/better-auth': {
-      id: '/demo/better-auth'
-      path: '/demo/better-auth'
-      fullPath: '/demo/better-auth'
-      preLoaderRoute: typeof DemoBetterAuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/demo/form/simple': {
-      id: '/demo/form/simple'
-      path: '/demo/form/simple'
-      fullPath: '/demo/form/simple'
-      preLoaderRoute: typeof DemoFormSimpleRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/demo/form/address': {
-      id: '/demo/form/address'
-      path: '/demo/form/address'
-      fullPath: '/demo/form/address'
-      preLoaderRoute: typeof DemoFormAddressRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -310,13 +230,9 @@ const HomeRouteRouteWithChildren = HomeRouteRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   HomeRouteRoute: HomeRouteRouteWithChildren,
+  LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRoute,
-  DemoBetterAuthRoute: DemoBetterAuthRoute,
-  DemoConvexRoute: DemoConvexRoute,
-  DemoTanstackQueryRoute: DemoTanstackQueryRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
-  DemoFormAddressRoute: DemoFormAddressRoute,
-  DemoFormSimpleRoute: DemoFormSimpleRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

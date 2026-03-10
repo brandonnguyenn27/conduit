@@ -41,3 +41,7 @@ export function buildProfileSearchText(input: SearchTextInput): string {
   ])
   return tokens.join(' ')
 }
+
+export function buildCompaniesSearchText(companies: string[]): string {
+  return toDedupedTokens(companies).join(' ')
+}
