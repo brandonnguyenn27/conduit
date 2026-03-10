@@ -1,6 +1,5 @@
 import { useForm } from "@tanstack/react-form";
 import { useState } from "react";
-import { AdminBypassForm } from "@/integrations/better-auth/admin-bypass-form";
 import { authClient } from "@/lib/auth-client";
 import { authFormDefaultValues } from "./auth-form.options";
 import { AuthPasswordField, AuthTextField } from "./auth-form-fields";
@@ -154,13 +153,6 @@ export function SignInForm() {
 							: "Don't have an account? Sign up"}
 					</button>
 				</div>
-
-				{import.meta.env.VITE_DEV === "true" && (
-					<>
-						<div className="my-6 h-px bg-neutral-200 dark:bg-neutral-800" />
-						<AdminBypassForm />
-					</>
-				)}
 
 				<p className="mt-6 text-xs text-center text-neutral-400 dark:text-neutral-500">
 					Built with{" "}

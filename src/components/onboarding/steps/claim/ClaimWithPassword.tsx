@@ -47,8 +47,18 @@ export function ClaimWithPassword({
         })
 
         if (signUpResult.error) {
-          setErrorMessage(signUpResult.error.message || 'Unable to create account.')
-          return
+          const signInResult = await authClient.signIn.email({
+            email,
+            password: value.password,
+          })
+          if (signInResult.error) {
+            setErrorMessage(
+              signUpResult.error.message ||
+                signInResult.error.message ||
+                'Unable to create account.'
+            )
+            return
+          }
         }
 
         await completeOnboarding({

@@ -9,6 +9,8 @@ import { Step1OrgPassword } from '@/components/onboarding/steps/Step1OrgPassword
 import { IdentityStepEmail } from '@/components/onboarding/steps/identity/IdentityStepEmail'
 import { Step3ConfirmProfile } from '@/components/onboarding/steps/Step3ConfirmProfile'
 import { ClaimWithPassword } from '@/components/onboarding/steps/claim/ClaimWithPassword'
+import { OnboardingFlowImage } from '@/components/onboarding/OnboardingFlowImage'
+import { BackgroundBeams } from '@/components/ui/background-beams'
 
 export const Route = createFileRoute('/onboarding')({
   component: OnboardingRoute,
@@ -81,8 +83,14 @@ function OnboardingRoute() {
   }
 
   return (
-    <main className="mx-auto flex min-h-[calc(100vh-3.5rem)] w-full max-w-7xl items-center px-6 py-10 md:px-8 lg:py-14">
-      <section className="grid w-full gap-8 md:grid-cols-[1fr_minmax(320px,0.9fr)]">
+    <main className="relative mx-auto flex min-h-[calc(100vh-3.5rem)] w-full max-w-7xl items-center overflow-hidden px-6 py-10 md:px-8 lg:py-14">
+      <div
+        className="absolute inset-0 mask-[linear-gradient(to_bottom,black_0%,black_70%,transparent_100%)] mask-size-[100%_100%] mask-no-repeat"
+        aria-hidden
+      >
+        <BackgroundBeams />
+      </div>
+      <section className="relative z-10 grid w-full gap-8 md:grid-cols-[1fr_minmax(320px,0.9fr)]">
         <div className="flex min-h-[560px] flex-col rounded-md border border-border bg-background p-6 md:min-h-[620px] md:p-8 lg:min-h-[680px]">
           <div className="mb-6">
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Onboarding</p>
@@ -223,13 +231,8 @@ function OnboardingRoute() {
           aria-hidden
         >
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(59,130,246,0.28),transparent_46%),radial-gradient(circle_at_80%_70%,rgba(59,130,246,0.18),transparent_38%)]" />
-          <div className="absolute inset-0 grid place-items-center p-10">
-            <div className="w-full max-w-sm rounded-md border border-dashed border-border/70 bg-background/70 p-5 backdrop-blur-sm">
-              <p className="text-sm font-medium text-foreground">Image Placeholder</p>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Generic tech visual will be added here in a later pass.
-              </p>
-            </div>
+          <div className="absolute inset-0">
+            <OnboardingFlowImage />
           </div>
         </div>
       </section>
