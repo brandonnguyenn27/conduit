@@ -32,7 +32,7 @@ type EducationEntry = {
   endYear?: number
 }
 
-type ProfileDetails = {
+export type ProfileDetails = {
   _id: Id<'profiles'>
   name: string
   headline: string

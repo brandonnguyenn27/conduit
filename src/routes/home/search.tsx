@@ -1,7 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { usePaginatedQuery, useQuery } from 'convex/react'
+import { usePaginatedQuery, useConvex } from 'convex/react'
 import { motion } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 
 import { ChatQueryInterface } from '@/components/app/ChatQueryInterface'
 import { ProfileDetailDrawer } from '@/components/app/ProfileDetailDrawer'
@@ -59,13 +60,6 @@ function SearchPage() {
   const isInitialSearchLoading = hasSearched && status === 'LoadingFirstPage'
 
   const disableLoadMore = status === 'Exhausted' || status === 'LoadingMore'
-  const selectedProfile = useQuery(
-    api.functions.profiles.queries.getForViewer,
-    organizationId && selectedProfileId
-      ? { organizationId, id: selectedProfileId }
-      : 'skip'
-  )
-  const isProfileLoading = !!selectedProfileId && selectedProfile === undefined
 
   function handleSearch(slot2: Slot2Value, slot3: string) {
     const normalized = slot3.trim()
@@ -159,16 +153,64 @@ function SearchPage() {
           </p>
         )}
       </div>
-      <ProfileDetailDrawer
-        open={!!selectedProfileId}
-        onOpenChange={(nextOpen) => {
-          if (!nextOpen) {
-            setSelectedProfileId(null)
-          }
-        }}
-        profile={selectedProfile}
-        isLoading={isProfileLoading}
-      />
+      {organizationId && selectedProfileId ? (
+        <SelectedProfileDetailDrawer
+          organizationId={organizationId}
+          selectedProfileId={selectedProfileId}
+          open={!!selectedProfileId}
+          onOpenChange={(nextOpen) => {
+            if (!nextOpen) {
+              setSelectedProfileId(null)
+            }
+          }}
+        />
+      ) : (
+        <ProfileDetailDrawer
+          open={!!selectedProfileId}
+          onOpenChange={(nextOpen) => {
+            if (!nextOpen) {
+              setSelectedProfileId(null)
+            }
+          }}
+          profile={undefined}
+          isLoading={false}
+        />
+      )}
     </div>
+  )
+}
+
+function SelectedProfileDetailDrawer({
+  organizationId,
+  selectedProfileId,
+  open,
+  onOpenChange,
+}: {
+  organizationId: Id<'organizations'>
+  selectedProfileId: Id<'profiles'>
+  open: boolean
+  onOpenChange: (nextOpen: boolean) => void
+}) {
+  const convex = useConvex()
+  const selectedProfileQuery = useQuery({
+    queryKey: ['profile-detail', organizationId, selectedProfileId],
+    staleTime: Infinity,
+    gcTime: 1000 * 60 * 30,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    queryFn: async () =>
+      await convex.query(api.functions.profiles.queries.getForViewer, {
+        organizationId,
+        id: selectedProfileId,
+      }),
+  })
+
+  return (
+    <ProfileDetailDrawer
+      open={open}
+      onOpenChange={onOpenChange}
+      profile={selectedProfileQuery.data ?? undefined}
+      isLoading={selectedProfileQuery.isLoading}
+    />
   )
 }
