@@ -5,10 +5,12 @@ import { educationEntry, experienceEntry } from '../../lib/validators'
 import {
   profileInsertValidator,
   toCompaniesSearchSlugFromExperience,
-  toCompaniesSearchTextFromExperience,
   toCurrentCompanySlugFromExperience,
+  toCurrentJobTitlesSearchSlugFromExperience,
   toEducationSearchSlug,
-  toSearchText,
+  toJobTitlesSearchSlug,
+  toPastJobTitlesSearchSlugFromExperience,
+  toSuggestSearchText,
 } from './helpers'
 
 export const create = mutation({
@@ -16,22 +18,22 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const doc = {
       ...args,
-      searchText: toSearchText({
+      suggestSearchText: toSuggestSearchText({
         name: args.name,
         headline: args.headline,
         summary: args.summary,
-        location: args.location,
-        industry: args.industry,
         skills: args.skills,
         majors: args.majors,
         schools: args.schools,
         companies: args.companies,
         jobTitles: args.jobTitles,
       }),
-      companiesSearchText: toCompaniesSearchTextFromExperience(args.experience),
       companiesSearchSlug: toCompaniesSearchSlugFromExperience(args.experience),
       currentCompanySlug: toCurrentCompanySlugFromExperience(args.experience),
       educationSearchSlug: toEducationSearchSlug(args.schools, args.majors),
+      jobTitlesSearchSlug: toJobTitlesSearchSlug(args.jobTitles),
+      currentJobTitlesSearchSlug: toCurrentJobTitlesSearchSlugFromExperience(args.experience),
+      pastJobTitlesSearchSlug: toPastJobTitlesSearchSlugFromExperience(args.experience),
     }
     return await ctx.db.insert('profiles', doc)
   },
@@ -71,25 +73,29 @@ export const update = mutation({
       ...current,
       ...filtered,
     }
-    await ctx.db.patch(id, {
+    const nextSuggestSearchText = toSuggestSearchText({
+      name: merged.name,
+      headline: merged.headline,
+      summary: merged.summary,
+      skills: merged.skills,
+      majors: merged.majors,
+      schools: merged.schools,
+      companies: merged.companies,
+      jobTitles: merged.jobTitles,
+    })
+    const patchDoc: Record<string, unknown> = {
       ...filtered,
-      searchText: toSearchText({
-        name: merged.name,
-        headline: merged.headline,
-        summary: merged.summary,
-        location: merged.location,
-        industry: merged.industry,
-        skills: merged.skills,
-        majors: merged.majors,
-        schools: merged.schools,
-        companies: merged.companies,
-        jobTitles: merged.jobTitles,
-      }),
-      companiesSearchText: toCompaniesSearchTextFromExperience(merged.experience),
       companiesSearchSlug: toCompaniesSearchSlugFromExperience(merged.experience),
       currentCompanySlug: toCurrentCompanySlugFromExperience(merged.experience),
       educationSearchSlug: toEducationSearchSlug(merged.schools, merged.majors),
-    })
+      jobTitlesSearchSlug: toJobTitlesSearchSlug(merged.jobTitles),
+      currentJobTitlesSearchSlug: toCurrentJobTitlesSearchSlugFromExperience(merged.experience),
+      pastJobTitlesSearchSlug: toPastJobTitlesSearchSlugFromExperience(merged.experience),
+    }
+    if (current.suggestSearchText !== nextSuggestSearchText) {
+      patchDoc.suggestSearchText = nextSuggestSearchText
+    }
+    await ctx.db.patch(id, patchDoc)
     return id
   },
 })
@@ -118,22 +124,24 @@ export const upsertFromImport = mutation({
       ...args.profile,
       organizationId: args.organizationId,
       linkedInUrl: args.linkedInUrl,
-      searchText: toSearchText({
+      suggestSearchText: toSuggestSearchText({
         name: args.profile.name,
         headline: args.profile.headline,
         summary: args.profile.summary,
-        location: args.profile.location,
-        industry: args.profile.industry,
         skills: args.profile.skills,
         majors: args.profile.majors,
         schools: args.profile.schools,
         companies: args.profile.companies,
         jobTitles: args.profile.jobTitles,
       }),
-      companiesSearchText: toCompaniesSearchTextFromExperience(args.profile.experience),
       companiesSearchSlug: toCompaniesSearchSlugFromExperience(args.profile.experience),
       currentCompanySlug: toCurrentCompanySlugFromExperience(args.profile.experience),
       educationSearchSlug: toEducationSearchSlug(args.profile.schools, args.profile.majors),
+      jobTitlesSearchSlug: toJobTitlesSearchSlug(args.profile.jobTitles),
+      currentJobTitlesSearchSlug: toCurrentJobTitlesSearchSlugFromExperience(
+        args.profile.experience
+      ),
+      pastJobTitlesSearchSlug: toPastJobTitlesSearchSlugFromExperience(args.profile.experience),
     }
     if (existing) {
       await ctx.db.patch(existing._id, doc)
@@ -143,50 +151,7 @@ export const upsertFromImport = mutation({
   },
 })
 
-export const backfillSearchText = mutation({
-  args: {
-    limit: v.optional(v.number()),
-    organizationId: v.optional(v.id('organizations')),
-  },
-  handler: async (ctx, args) => {
-    const limit = Math.max(1, Math.min(args.limit ?? 100, 500))
-    const scanLimit = Math.max(limit, Math.min(limit * 4, 2000))
-    let docs
-    if (args.organizationId) {
-      const organizationId = args.organizationId
-      docs = await ctx.db
-        .query('profiles')
-        .withIndex('by_organization_linkedin', (q) => q.eq('organizationId', organizationId))
-        .take(scanLimit)
-    } else {
-      docs = await ctx.db.query('profiles').take(scanLimit)
-    }
-
-    let updated = 0
-    for (const profile of docs) {
-      if (updated >= limit) break
-      const nextSearchText = toSearchText({
-        name: profile.name,
-        headline: profile.headline,
-        summary: profile.summary,
-        location: profile.location,
-        industry: profile.industry,
-        skills: profile.skills,
-        majors: profile.majors,
-        schools: profile.schools,
-        companies: profile.companies,
-        jobTitles: profile.jobTitles,
-      })
-      if (profile.searchText === nextSearchText) continue
-      await ctx.db.patch(profile._id, { searchText: nextSearchText })
-      updated++
-    }
-
-    return { scanned: docs.length, updated }
-  },
-})
-
-export const backfillCompaniesSearchText = mutation({
+export const backfillSuggestSearchText = mutation({
   args: {
     limit: v.optional(v.number()),
     organizationId: v.optional(v.id('organizations')),
@@ -209,9 +174,18 @@ export const backfillCompaniesSearchText = mutation({
     let updated = 0
     for (const profile of docs) {
       if (updated >= limit) break
-      const next = toCompaniesSearchTextFromExperience(profile.experience)
-      if (profile.companiesSearchText === next) continue
-      await ctx.db.patch(profile._id, { companiesSearchText: next })
+      const next = toSuggestSearchText({
+        name: profile.name,
+        headline: profile.headline,
+        summary: profile.summary,
+        skills: profile.skills,
+        majors: profile.majors,
+        schools: profile.schools,
+        companies: profile.companies,
+        jobTitles: profile.jobTitles,
+      })
+      if (profile.suggestSearchText === next) continue
+      await ctx.db.patch(profile._id, { suggestSearchText: next })
       updated++
     }
     return { scanned: docs.length, updated }
@@ -316,14 +290,67 @@ export const backfillCurrentExperience = mutation({
       if (updated >= limit) break
       const derived = deriveCurrentExperienceFromStored(profile.experience)
       if (!derived) continue
-      const nextSearchText = derived.currentExperienceSearchText
-      if (profile.currentExperienceSearchText === nextSearchText) continue
+      const nextCurrentExperience = derived.currentExperience
+      const currentCurrentExperience = profile.currentExperience
+      if (
+        currentCurrentExperience &&
+        JSON.stringify(currentCurrentExperience) === JSON.stringify(nextCurrentExperience)
+      ) {
+        continue
+      }
       await ctx.db.patch(profile._id, {
-        currentExperience: derived.currentExperience,
-        currentExperienceSearchText: nextSearchText,
+        currentExperience: nextCurrentExperience,
       })
       updated++
     }
     return { scanned: docs.length, updated }
   },
 })
+
+export const backfillJobTitleSlugs = mutation({
+  args: {
+    limit: v.optional(v.number()),
+    organizationId: v.optional(v.id('organizations')),
+  },
+  handler: async (ctx, args) => {
+    const limit = Math.max(1, Math.min(args.limit ?? 100, 500))
+    const scanLimit = Math.max(limit, Math.min(limit * 4, 2000))
+    let docs
+    if (args.organizationId) {
+      docs = await ctx.db
+        .query('profiles')
+        .withIndex('by_organization_linkedin', (q) =>
+          q.eq('organizationId', args.organizationId!)
+        )
+        .take(scanLimit)
+    } else {
+      docs = await ctx.db.query('profiles').take(scanLimit)
+    }
+
+    let updated = 0
+    for (const profile of docs) {
+      if (updated >= limit) break
+      const nextJobTitlesSearchSlug = toJobTitlesSearchSlug(profile.jobTitles)
+      const nextCurrentJobTitlesSearchSlug =
+        toCurrentJobTitlesSearchSlugFromExperience(profile.experience)
+      const nextPastJobTitlesSearchSlug = toPastJobTitlesSearchSlugFromExperience(
+        profile.experience
+      )
+      if (
+        profile.jobTitlesSearchSlug === nextJobTitlesSearchSlug &&
+        profile.currentJobTitlesSearchSlug === nextCurrentJobTitlesSearchSlug &&
+        profile.pastJobTitlesSearchSlug === nextPastJobTitlesSearchSlug
+      ) {
+        continue
+      }
+      await ctx.db.patch(profile._id, {
+        jobTitlesSearchSlug: nextJobTitlesSearchSlug,
+        currentJobTitlesSearchSlug: nextCurrentJobTitlesSearchSlug,
+        pastJobTitlesSearchSlug: nextPastJobTitlesSearchSlug,
+      })
+      updated++
+    }
+    return { scanned: docs.length, updated }
+  },
+})
+

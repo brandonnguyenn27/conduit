@@ -46,10 +46,47 @@ describe('mapToProfile', () => {
     expect(out.schools).toEqual(['MIT'])
     expect(out.companies).toEqual(['Google'])
     expect(out.jobTitles).toEqual(['SWE', 'Senior SWE'])
-    expect(out.searchText).toContain('John Doe')
-    expect(out.searchText).toContain('Engineer at Acme')
-    expect(out.searchText).toContain('MIT')
-    expect(out.searchText).toContain('Google')
+    expect(out.jobTitlesSearchSlug).toBe('swe senior')
+    expect(out.currentJobTitlesSearchSlug).toBe('swe senior')
+    expect(out.pastJobTitlesSearchSlug).toBe('')
+  })
+
+  it('normalizes job title search slug for role matching', () => {
+    const raw = minimalRaw({
+      experience: [
+        { companyName: 'Acme', title: 'Software Engineer' },
+        { companyName: 'Acme', title: 'software-engineer' },
+        { companyName: 'Acme', title: 'Senior, Software Engineer' },
+      ],
+    })
+    const out = mapToProfile(raw, orgId)
+    expect(out.jobTitlesSearchSlug).toBe('software engineer senior')
+    expect(out.currentJobTitlesSearchSlug).toBe('software engineer senior')
+    expect(out.pastJobTitlesSearchSlug).toBe('')
+  })
+
+  it('separates current and past role slugs', () => {
+    const raw = minimalRaw({
+      experience: [
+        { companyName: 'Acme', title: 'Current Role' },
+        { companyName: 'Acme', title: 'Past Role', end: { year: 2022 } },
+      ],
+    })
+    const out = mapToProfile(raw, orgId)
+    expect(out.currentJobTitlesSearchSlug).toBe('current role')
+    expect(out.pastJobTitlesSearchSlug).toBe('past role')
+  })
+
+  it('falls back current role slug to most recent role when no explicit current role exists', () => {
+    const raw = minimalRaw({
+      experience: [
+        { companyName: 'Acme', title: 'Older Role', start: { year: 2018 }, end: { year: 2020 } },
+        { companyName: 'Beta', title: 'Most Recent Role', start: { year: 2021 }, end: { year: 2024 } },
+      ],
+    })
+    const out = mapToProfile(raw, orgId)
+    expect(out.currentJobTitlesSearchSlug).toBe('most recent role')
+    expect(out.pastJobTitlesSearchSlug).toBe('older role')
   })
 
   it('preserves education and experience for display', () => {

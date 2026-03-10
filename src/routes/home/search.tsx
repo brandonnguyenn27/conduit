@@ -57,12 +57,36 @@ function SearchPage() {
     () => results.slice(0, mainVisibleCount),
     [mainVisibleCount, results]
   )
+  const isRoleQuery =
+    searchParams?.slot2 === 'works_as' || searchParams?.slot2 === 'worked_as'
+  const exactProfiles = useMemo(
+    () =>
+      isRoleQuery
+        ? mainProfiles.filter((profile) => profile.matchType === 'exact')
+        : mainProfiles,
+    [isRoleQuery, mainProfiles]
+  )
+  const suggestedProfiles = useMemo(
+    () =>
+      isRoleQuery
+        ? mainProfiles.filter((profile) => profile.matchType === 'suggested')
+        : [],
+    [isRoleQuery, mainProfiles]
+  )
   const isInitialSearchLoading = hasSearched && status === 'LoadingFirstPage'
 
   const disableLoadMore = status === 'Exhausted' || status === 'LoadingMore'
 
+  function normalizeSearchValue(slot2: Slot2Value, value: string) {
+    const trimmed = value.trim()
+    if (!trimmed) return ''
+    if (slot2 !== 'works_as' && slot2 !== 'worked_as') return trimmed
+    // Keep role queries predictable for slug matching.
+    return trimmed.replace(/\s+/g, ' ')
+  }
+
   function handleSearch(slot2: Slot2Value, slot3: string) {
-    const normalized = slot3.trim()
+    const normalized = normalizeSearchValue(slot2, slot3)
     if (!normalized) return
     setSearchKey(Date.now())
     setSearchParams({ slot2, slot3: normalized })
@@ -114,7 +138,7 @@ function SearchPage() {
                 <div className="flex w-full flex-col gap-6">
                   <SearchResultsTable
                     title="Results"
-                    profiles={mainProfiles}
+                    profiles={exactProfiles}
                     isLoading={false}
                     emptyMessage="No profiles found. Try another search."
                     onRefresh={handleRefresh}
@@ -123,6 +147,17 @@ function SearchPage() {
                       setSelectedProfileId(profileId as Id<'profiles'>)
                     }
                   />
+                  {suggestedProfiles.length > 0 ? (
+                    <SearchResultsTable
+                      title="Suggested/Similar Profiles"
+                      profiles={suggestedProfiles}
+                      isLoading={false}
+                      emptyMessage="No suggested profiles."
+                      onProfileClick={(profileId) =>
+                        setSelectedProfileId(profileId as Id<'profiles'>)
+                      }
+                    />
+                  ) : null}
 
                   {mainProfiles.length > 0 ? (
                     <Pagination>

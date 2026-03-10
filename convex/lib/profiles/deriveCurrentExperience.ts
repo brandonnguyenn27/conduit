@@ -17,7 +17,7 @@ function isCurrent(exp: StoredExperience): boolean {
 
 export function deriveCurrentExperienceFromStored(
   experience: StoredExperience[]
-): { currentExperience: StoredExperience; currentExperienceSearchText: string } | null {
+): { currentExperience: StoredExperience } | null {
   const withCompany = experience
     .map((e) => ({ ...e, companyName: e.companyName.trim() }))
     .filter((e) => e.companyName.length > 0)
@@ -35,6 +35,5 @@ export function deriveCurrentExperienceFromStored(
   })
 
   const exp = sorted[0]
-  const text = [exp.companyName, exp.title].filter(Boolean).join(' ')
-  return text ? { currentExperience: exp, currentExperienceSearchText: text } : null
+  return { currentExperience: exp }
 }

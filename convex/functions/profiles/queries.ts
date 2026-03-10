@@ -4,7 +4,11 @@ import { paginationOptsValidator, paginationResultValidator } from 'convex/serve
 import { authComponent } from '../../auth'
 import { resolveSearchResultDisplayFields } from '../../lib/profiles/searchResultDisplay'
 import { slugifySearchToken } from '../../lib/search/slug'
+import { normalizeRoleExact, splitJobTitlesByTenure, toRoleSearchQuery } from './helpers'
 import type { Id } from '../../_generated/dataModel'
+
+const ROLE_EXACT_RESULTS_THRESHOLD = 10
+const ROLE_SUGGESTED_RESULTS_CAP = 5
 
 export const listByOrganization = query({
   args: { organizationId: v.id('organizations') },
@@ -91,28 +95,42 @@ export const getClaimedByUser = query({
   },
 })
 
-export const searchByText = query({
+export const suggestProfiles = query({
   args: {
     organizationId: v.id('organizations'),
     searchText: v.string(),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const q = args.searchText.trim()
+    await requireOrganizationMembership(ctx, args.organizationId)
+
+    const q = args.searchText.trim().toLowerCase()
     if (!q) return []
-    const limit = Math.max(1, Math.min(args.limit ?? 25, 100))
-    return await ctx.db
+    const limit = Math.max(1, Math.min(args.limit ?? 10, 50))
+
+    const results = await ctx.db
       .query('profiles')
-      .withSearchIndex('by_search_text', (search) =>
-        search.search('searchText', q).eq('organizationId', args.organizationId)
+      .withSearchIndex('by_suggest_search', (search) =>
+        search.search('suggestSearchText', q).eq('organizationId', args.organizationId)
       )
       .take(limit)
+
+    return results.map((profile) => ({
+      _id: profile._id,
+      name: profile.name,
+      headline: profile.headline,
+      currentCompany: profile.currentCompany,
+      linkedInUrl: profile.linkedInUrl,
+      profileImageUrl: profile.profileImageUrl,
+    }))
   },
 })
 
 const slot2SearchValidator = v.union(
   v.literal('works_at'),
   v.literal('worked_at'),
+  v.literal('works_as'),
+  v.literal('worked_as'),
   v.literal('studied'),
   v.literal('studies')
 )
@@ -132,6 +150,7 @@ export const searchProfilesPaginated = query({
       headline: v.string(),
       currentCompany: v.optional(v.string()),
       linkedInUrl: v.string(),
+      matchType: v.union(v.literal('exact'), v.literal('suggested')),
     })
   ),
   handler: async (ctx, args) => {
@@ -142,20 +161,37 @@ export const searchProfilesPaginated = query({
       throw new Error('Search query is required')
     }
 
-    const searchSlug = slugifySearchToken(queryText)
+    const roleQuery =
+      args.slot2 === 'works_as' || args.slot2 === 'worked_as'
+        ? toRoleSearchQuery(queryText)
+        : ''
+    const searchSlug =
+      args.slot2 === 'works_as' || args.slot2 === 'worked_as'
+        ? roleQuery
+        : slugifySearchToken(queryText)
     const safeSearchSlug = searchSlug || '__no_match__'
 
     const isWorksAt = args.slot2 === 'works_at'
     const isWorkedAt = args.slot2 === 'worked_at'
+    const isWorksAs = args.slot2 === 'works_as'
+    const isWorkedAs = args.slot2 === 'worked_as'
     const searchIndex = isWorksAt
       ? 'by_current_company_slug_search'
       : isWorkedAt
         ? 'by_companies_slug_search'
+        : isWorksAs
+          ? 'by_current_job_titles_slug_search'
+          : isWorkedAs
+            ? 'by_past_job_titles_slug_search'
         : 'by_education_slug_search'
     const searchField = isWorksAt
       ? 'currentCompanySlug'
       : isWorkedAt
         ? 'companiesSearchSlug'
+        : isWorksAs
+          ? 'currentJobTitlesSearchSlug'
+          : isWorkedAs
+            ? 'pastJobTitlesSearchSlug'
         : 'educationSearchSlug'
 
     const result = await ctx.db
@@ -165,10 +201,37 @@ export const searchProfilesPaginated = query({
       )
       .paginate(args.paginationOpts)
 
+    const roleExactQuery = normalizeRoleExact(queryText)
+    const finalPage = (isWorksAs || isWorkedAs)
+      ? (() => {
+          const exact: (typeof result.page)[number][] = []
+          const suggested: (typeof result.page)[number][] = []
+          for (const profile of result.page) {
+            const roleTenure = splitJobTitlesByTenure(profile.experience)
+            const titles = isWorksAs ? roleTenure.current : roleTenure.past
+            const isExact = titles.some((title) => normalizeRoleExact(title) === roleExactQuery)
+            if (isExact) {
+              exact.push(profile)
+            } else {
+              suggested.push(profile)
+            }
+          }
+          const shouldIncludeSuggested = exact.length < ROLE_EXACT_RESULTS_THRESHOLD
+          const suggestedLimited = shouldIncludeSuggested
+            ? suggested.slice(0, ROLE_SUGGESTED_RESULTS_CAP)
+            : []
+          return { exact, suggested: suggestedLimited, ordered: [...exact, ...suggestedLimited] }
+        })()
+      : { exact: result.page, suggested: [] as (typeof result.page)[number][], ordered: result.page }
+
+    const suggestedIds = new Set(finalPage.suggested.map((profile) => profile._id))
     return {
       ...result,
-      page: result.page.map((profile) => {
+      page: finalPage.ordered.map((profile) => {
         const { headline, currentCompany } = resolveSearchResultDisplayFields(profile)
+        const matchType: 'exact' | 'suggested' = suggestedIds.has(profile._id)
+          ? 'suggested'
+          : 'exact'
 
         return {
           _id: profile._id,
@@ -176,6 +239,7 @@ export const searchProfilesPaginated = query({
           headline,
           currentCompany,
           linkedInUrl: profile.linkedInUrl,
+          matchType,
         }
       }),
     }

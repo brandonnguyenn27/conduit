@@ -6,12 +6,14 @@ import { api, internal } from './_generated/api'
 import { v } from 'convex/values'
 import { getLinkedInProvider, mapToProfile } from './lib/linkedin'
 import { normalizeSearchArrays } from './lib/linkedin/normalize'
-import { buildProfileSearchText } from './lib/search/profileSearchText'
 import {
   toCompaniesSearchSlugFromExperience,
-  toCompaniesSearchTextFromExperience,
   toCurrentCompanySlugFromExperience,
+  toCurrentJobTitlesSearchSlugFromExperience,
   toEducationSearchSlug,
+  toJobTitlesSearchSlug,
+  toPastJobTitlesSearchSlugFromExperience,
+  toSuggestSearchText,
 } from './functions/profiles/helpers'
 import { PIPELINE_BATCH_SIZE, PIPELINE_NEXT_RUN_AFTER_MS } from './lib/importPipelineConfig'
 
@@ -79,20 +81,16 @@ export const processImportQueue = action({
           profileForImport.companies = normalized.companies
           profileForImport.jobTitles = normalized.jobTitles
         }
-        profileForImport.searchText = buildProfileSearchText({
+        profileForImport.suggestSearchText = toSuggestSearchText({
           name: profileForImport.name,
           headline: profileForImport.headline,
           summary: profileForImport.summary,
-          location: profileForImport.location,
-          industry: profileForImport.industry,
           skills: profileForImport.skills,
           majors: profileForImport.majors,
           schools: profileForImport.schools,
           companies: profileForImport.companies,
           jobTitles: profileForImport.jobTitles,
         })
-        profileForImport.companiesSearchText =
-          toCompaniesSearchTextFromExperience(profileForImport.experience)
         profileForImport.companiesSearchSlug =
           toCompaniesSearchSlugFromExperience(profileForImport.experience)
         profileForImport.currentCompanySlug =
@@ -101,6 +99,13 @@ export const processImportQueue = action({
           profileForImport.schools,
           profileForImport.majors
         )
+        profileForImport.jobTitlesSearchSlug = toJobTitlesSearchSlug(
+          profileForImport.jobTitles
+        )
+        profileForImport.currentJobTitlesSearchSlug =
+          toCurrentJobTitlesSearchSlugFromExperience(profileForImport.experience)
+        profileForImport.pastJobTitlesSearchSlug =
+          toPastJobTitlesSearchSlugFromExperience(profileForImport.experience)
         await ctx.runMutation(api.functions.profiles.mutations.upsertFromImport, {
           organizationId: item.organizationId,
           linkedInUrl: item.linkedInUrl,

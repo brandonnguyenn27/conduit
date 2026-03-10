@@ -1,7 +1,19 @@
 export type Slot1Value = 'alumni' | 'member'
-export type Slot2Value = 'works_at' | 'worked_at' | 'studied' | 'studies'
+export type Slot2Value =
+  | 'works_at'
+  | 'worked_at'
+  | 'works_as'
+  | 'worked_as'
+  | 'studied'
+  | 'studies'
 export type Slot3Value = string
-export type FacetKey = 'companies' | 'currentCompanies' | 'majors' | 'schools'
+export type FacetKey =
+  | 'companies'
+  | 'currentCompanies'
+  | 'majors'
+  | 'schools'
+  | 'currentRoles'
+  | 'pastRoles'
 
 export interface MadLibOption<T extends string = string> {
   value: T
@@ -23,17 +35,23 @@ export const CHAT_QUERY_CONFIG: ChatQueryMadLibConfig = {
     alumni: [
       { value: 'works_at', label: 'who work at' },
       { value: 'worked_at', label: 'who worked at' },
+      { value: 'works_as', label: 'who work as' },
+      { value: 'worked_as', label: 'who worked as' },
       { value: 'studied', label: 'who studied' },
     ],
     member: [
       { value: 'works_at', label: 'who works at' },
       { value: 'worked_at', label: 'who worked at' },
+      { value: 'works_as', label: 'who work as' },
+      { value: 'worked_as', label: 'who worked as' },
       { value: 'studies', label: 'who studies' },
     ],
   },
   slot2ToFacet: {
     works_at: 'currentCompanies',
     worked_at: 'companies',
+    works_as: 'currentRoles',
+    worked_as: 'pastRoles',
     studied: 'majors',
     studies: 'majors',
   },
@@ -50,6 +68,8 @@ export function getSlot3OptionsFromFacets(
     currentCompanies: string[]
     majors: string[]
     schools: string[]
+    currentRoles: string[]
+    pastRoles: string[]
   } | null
 ) {
   if (!facets) return []

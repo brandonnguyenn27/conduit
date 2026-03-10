@@ -53,14 +53,15 @@ export default defineSchema({
     schools: v.array(v.string()),
     companies: v.array(v.string()),
     jobTitles: v.array(v.string()),
-    searchText: v.optional(v.string()),
+    suggestSearchText: v.optional(v.string()),
     currentCompany: v.optional(v.string()),
     currentExperience: v.optional(experienceEntry),
-    currentExperienceSearchText: v.optional(v.string()),
-    companiesSearchText: v.optional(v.string()),
     companiesSearchSlug: v.optional(v.string()),
     currentCompanySlug: v.optional(v.string()),
     educationSearchSlug: v.optional(v.string()),
+    jobTitlesSearchSlug: v.optional(v.string()),
+    currentJobTitlesSearchSlug: v.optional(v.string()),
+    pastJobTitlesSearchSlug: v.optional(v.string()),
     class: v.optional(v.string()),
     profileType: v.optional(v.union(v.literal('alumni'), v.literal('member'))),
     claimedByUserId: v.optional(v.string()),
@@ -69,16 +70,8 @@ export default defineSchema({
     .index('by_organization_linkedin', ['organizationId', 'linkedInUrl'])
     .index('by_organization_claimed', ['organizationId', 'claimedByUserId'])
     .index('by_organization_email', ['organizationId', 'email'])
-    .searchIndex('by_search_text', {
-      searchField: 'searchText',
-      filterFields: ['organizationId'],
-    })
-    .searchIndex('by_current_experience_search', {
-      searchField: 'currentExperienceSearchText',
-      filterFields: ['organizationId'],
-    })
-    .searchIndex('by_companies_search', {
-      searchField: 'companiesSearchText',
+    .searchIndex('by_suggest_search', {
+      searchField: 'suggestSearchText',
       filterFields: ['organizationId'],
     })
     .searchIndex('by_companies_slug_search', {
@@ -91,6 +84,18 @@ export default defineSchema({
     })
     .searchIndex('by_education_slug_search', {
       searchField: 'educationSearchSlug',
+      filterFields: ['organizationId'],
+    })
+    .searchIndex('by_job_titles_slug_search', {
+      searchField: 'jobTitlesSearchSlug',
+      filterFields: ['organizationId'],
+    })
+    .searchIndex('by_current_job_titles_slug_search', {
+      searchField: 'currentJobTitlesSearchSlug',
+      filterFields: ['organizationId'],
+    })
+    .searchIndex('by_past_job_titles_slug_search', {
+      searchField: 'pastJobTitlesSearchSlug',
       filterFields: ['organizationId'],
     }),
 
@@ -126,6 +131,8 @@ export default defineSchema({
     currentCompanies: v.optional(v.array(v.string())),
     majors: v.array(v.string()),
     schools: v.array(v.string()),
+    currentRoles: v.optional(v.array(v.string())),
+    pastRoles: v.optional(v.array(v.string())),
     updatedAt: v.number(),
   }).index('by_organization', ['organizationId']),
 

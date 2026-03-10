@@ -1,6 +1,11 @@
 import type { Id } from '../../_generated/dataModel'
 import type { RawExperience, RawLinkedInProfile } from './types'
-import { buildCompaniesSearchText, buildProfileSearchText } from '../search/profileSearchText'
+import {
+  toJobTitlesSearchSlug,
+  toCurrentJobTitlesSearchSlugFromExperience,
+  toPastJobTitlesSearchSlugFromExperience,
+  toSuggestSearchText,
+} from '../../functions/profiles/helpers'
 import { buildSlugBlob, slugifySearchToken } from '../search/slug'
 
 export interface ProfileInsertPayload {
@@ -35,15 +40,16 @@ export interface ProfileInsertPayload {
   schools: string[]
   companies: string[]
   jobTitles: string[]
+  suggestSearchText?: string
   currentCompany?: string
   currentExperience?: RawExperience
-  currentExperienceSearchText?: string
-  companiesSearchText?: string
   companiesSearchSlug?: string
   currentCompanySlug?: string
   educationSearchSlug?: string
+  jobTitlesSearchSlug?: string
+  currentJobTitlesSearchSlug?: string
+  pastJobTitlesSearchSlug?: string
   email?: string
-  searchText: string
 }
 
 const LINKEDIN_BASE = 'https://www.linkedin.com/in/'
@@ -90,10 +96,6 @@ export function deriveCurrentOrMostRecentExperience(
   return ended[0]
 }
 
-function buildCurrentExperienceSearchText(companyName: string, title: string): string {
-  return [companyName.trim(), title.trim()].filter(Boolean).join(' ')
-}
-
 export function mapToProfile(
   raw: RawLinkedInProfile,
   organizationId: Id<'organizations'>
@@ -106,31 +108,28 @@ export function mapToProfile(
   const jobTitles = [...new Set(raw.experience.map((e) => e.title).filter(Boolean))]
   const currentCompany = deriveCurrentOrMostRecentCompany(raw.experience)
   const currentExperience = deriveCurrentOrMostRecentExperience(raw.experience)
-  const currentExperienceSearchText = currentExperience
-    ? buildCurrentExperienceSearchText(currentExperience.companyName, currentExperience.title)
-    : undefined
   const name = `${raw.firstName} ${raw.lastName}`.trim()
   const headline = raw.headline
   const summary = raw.summary
   const location = raw.location
   const industry = raw.industry
   const skills = raw.skills.length ? raw.skills : undefined
-  const searchText = buildProfileSearchText({
+  const suggestSearchText = toSuggestSearchText({
     name,
     headline,
     summary,
-    location,
-    industry,
     skills,
     majors,
     schools,
     companies,
     jobTitles,
   })
-  const companiesSearchText = buildCompaniesSearchText(companies)
   const companiesSearchSlug = buildSlugBlob(raw.experience.map((e) => e.companyName))
   const currentCompanySlug = slugifySearchToken(currentExperience?.companyName ?? '') || undefined
   const educationSearchSlug = buildSlugBlob([...schools, ...majors])
+  const jobTitlesSearchSlug = toJobTitlesSearchSlug(jobTitles)
+  const currentJobTitlesSearchSlug = toCurrentJobTitlesSearchSlugFromExperience(raw.experience)
+  const pastJobTitlesSearchSlug = toPastJobTitlesSearchSlugFromExperience(raw.experience)
   return {
     organizationId,
     linkedInUrl,
@@ -163,13 +162,14 @@ export function mapToProfile(
     schools,
     companies,
     jobTitles,
+    suggestSearchText,
     currentCompany,
     currentExperience,
-    currentExperienceSearchText,
-    companiesSearchText,
     companiesSearchSlug,
     currentCompanySlug,
     educationSearchSlug,
-    searchText,
+    jobTitlesSearchSlug,
+    currentJobTitlesSearchSlug,
+    pastJobTitlesSearchSlug,
   }
 }

@@ -2,6 +2,7 @@ import type { Id } from '../../_generated/dataModel'
 import { mutation } from '../../_generated/server'
 import { v } from 'convex/values'
 import { deriveCurrentExperienceFromStored } from '../../lib/profiles/deriveCurrentExperience'
+import { splitJobTitlesByTenure } from '../profiles/helpers'
 
 function dedupeSort(values: string[]): string[] {
   const seen = new Set<string>()
@@ -32,6 +33,8 @@ export const rebuildOrganizationFacets = mutation({
     const currentCompaniesRaw: string[] = []
     const majorsRaw: string[] = []
     const schoolsRaw: string[] = []
+    const currentRolesRaw: string[] = []
+    const pastRolesRaw: string[] = []
 
     for (const p of profiles) {
       companiesRaw.push(...p.companies)
@@ -47,12 +50,17 @@ export const rebuildOrganizationFacets = mutation({
 
       majorsRaw.push(...p.majors)
       schoolsRaw.push(...p.schools)
+      const roleTenure = splitJobTitlesByTenure(p.experience)
+      currentRolesRaw.push(...roleTenure.current)
+      pastRolesRaw.push(...roleTenure.past)
     }
 
     const companies = dedupeSort(companiesRaw)
     const currentCompanies = dedupeSort(currentCompaniesRaw)
     const majors = dedupeSort(majorsRaw)
     const schools = dedupeSort(schoolsRaw)
+    const currentRoles = dedupeSort(currentRolesRaw)
+    const pastRoles = dedupeSort(pastRolesRaw)
 
     const existing = await ctx.db
       .query('organizationFacets')
@@ -68,6 +76,8 @@ export const rebuildOrganizationFacets = mutation({
       currentCompanies,
       majors,
       schools,
+      currentRoles,
+      pastRoles,
       updatedAt: now,
     }
 

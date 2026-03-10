@@ -64,14 +64,13 @@ export function ChatQueryInterface({
   const [slot3, setSlot3] = useState<Slot3Value | ''>('')
 
   const slot2Options = getSlot2Options(slot1, config)
-  const slot3Options =
-    slot2 && facets
-      ? getSlot3OptionsFromFacets(slot2 as Slot2Value, facets)
-      : []
-
   const effectiveSlot2 = slot2Options.some((o) => o.value === slot2)
     ? slot2
     : slot2Options[0]?.value ?? ''
+  const slot3Options =
+    effectiveSlot2 && facets
+      ? getSlot3OptionsFromFacets(effectiveSlot2 as Slot2Value, facets)
+      : []
   const effectiveSlot3 = slot3Options.some((o) => o.value === slot3)
     ? slot3
     : ''
@@ -92,6 +91,13 @@ export function ChatQueryInterface({
 
   const isLoading = organizationId && facets === undefined
   const hasNoFacets = organizationId && facets === null
+  const slot3Placeholder = isLoading
+    ? 'Loading...'
+    : hasNoFacets
+      ? 'No data yet'
+      : effectiveSlot2 === 'works_as' || effectiveSlot2 === 'worked_as'
+        ? 'Search or select role...'
+        : 'Search or select...'
 
   return (
     <motion.div
@@ -163,13 +169,7 @@ export function ChatQueryInterface({
               '**:data-[slot=input-group-control]:placeholder:text-muted-foreground'
             )}
             disabled={slot3Options.length === 0 || !!isLoading}
-            placeholder={
-              isLoading
-                ? 'Loading...'
-                : hasNoFacets
-                  ? 'No data yet'
-                  : 'Search or select...'
-            }
+            placeholder={slot3Placeholder}
             showClear
           />
           <ComboboxContent>
