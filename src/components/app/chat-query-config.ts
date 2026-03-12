@@ -61,19 +61,11 @@ export function getSlot2Options(slot1: Slot1Value, config: ChatQueryMadLibConfig
   return config.slot2BySlot1[slot1] ?? []
 }
 
-export function getSlot3OptionsFromFacets(
-  slot2: Slot2Value,
-  facets: {
-    companies: string[]
-    currentCompanies: string[]
-    majors: string[]
-    schools: string[]
-    currentRoles: string[]
-    pastRoles: string[]
-  } | null
-) {
-  if (!facets) return []
-  const key = CHAT_QUERY_CONFIG.slot2ToFacet[slot2]
-  const values = facets[key] ?? []
-  return values.map((v) => ({ value: v, label: v }))
+export function getFacetKeyForSlot2(slot2: Slot2Value): FacetKey {
+  return CHAT_QUERY_CONFIG.slot2ToFacet[slot2]
+}
+
+export function mapFacetValuesToOptions(values: string[] | null | undefined) {
+  if (!values) return []
+  return values.map((value) => ({ value, label: value }))
 }

@@ -1,93 +1,78 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { usePaginatedQuery, useConvex } from 'convex/react'
-import { motion } from 'framer-motion'
-import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useServerFn } from '@tanstack/react-start'
+import { motion } from 'framer-motion'
+import { useState } from 'react'
 
 import { ChatQueryInterface } from '@/components/app/ChatQueryInterface'
 import { ProfileDetailDrawer } from '@/components/app/ProfileDetailDrawer'
-import { SearchResultsTable } from '@/components/app/SearchResultsTable'
+import { SearchResultsContent } from '@/components/home/search/SearchResultsContent'
+import { SelectedProfileDetailDrawer } from '@/components/home/search/SelectedProfileDetailDrawer'
 import { AuroraText } from '@/components/ui/aurora-text'
 import { DotPattern } from '@/components/ui/dot-pattern'
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-} from '@/components/ui/pagination'
 import type { Slot2Value } from '@/components/app/chat-query-config'
-import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
-import { useOrganization } from '@/contexts/OrganizationContext'
+import { getSearchRouteDataFn, searchProfilesForViewerFn } from '@/lib/search.functions'
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/home/search')({
+  beforeLoad: async () => await getSearchRouteDataFn(),
   component: SearchPage,
 })
 
 type SearchParams = { slot2: Slot2Value; slot3: string } | null
 
+function normalizeSearchValue(slot2: Slot2Value, value: string) {
+  const trimmed = value.trim()
+  if (!trimmed) return ''
+  if (slot2 !== 'works_as' && slot2 !== 'worked_as') return trimmed
+  return trimmed.replace(/\s+/g, ' ')
+}
+
 function SearchPage() {
-  const organizationId = useOrganization()
+  const { organizationId } = Route.useRouteContext()
+  const searchProfilesForViewer = useServerFn(searchProfilesForViewerFn)
   const [searchParams, setSearchParams] = useState<SearchParams>(null)
   const [searchKey, setSearchKey] = useState(() => Date.now())
-  const [mainVisibleCount, setMainVisibleCount] = useState(10)
+  const [searchLimit, setSearchLimit] = useState(10)
   const [selectedProfileId, setSelectedProfileId] = useState<Id<'profiles'> | null>(null)
   const hasSearched = !!searchParams
 
-  const { results, status, loadMore } = usePaginatedQuery(
-    api.functions.profiles.queries.searchProfilesPaginated,
-    organizationId && searchParams
-      ? {
-          organizationId,
-          searchQuery: searchParams.slot3,
-          slot2: searchParams.slot2,
+  const searchResultsQuery = useQuery({
+    queryKey: [
+      'search-profiles',
+      organizationId,
+      searchParams?.slot2,
+      searchParams?.slot3,
+      searchKey,
+      searchLimit,
+    ],
+    enabled: !!organizationId && !!searchParams,
+    queryFn: async () =>
+      await searchProfilesForViewer({
+        data: {
+          organizationId: organizationId as Id<'organizations'>,
+          searchQuery: searchParams!.slot3,
+          slot2: searchParams!.slot2,
           searchKey,
-        }
-      : 'skip',
-    { initialNumItems: 10 }
-  )
+          limit: searchLimit,
+        },
+      }),
+  })
 
-  useEffect(() => {
-    setMainVisibleCount(10)
-    setSelectedProfileId(null)
-  }, [searchParams, organizationId])
-
-  const mainProfiles = useMemo(
-    () => results.slice(0, mainVisibleCount),
-    [mainVisibleCount, results]
-  )
+  const mainProfiles = searchResultsQuery.data?.page ?? []
   const isRoleQuery =
     searchParams?.slot2 === 'works_as' || searchParams?.slot2 === 'worked_as'
-  const exactProfiles = useMemo(
-    () =>
-      isRoleQuery
-        ? mainProfiles.filter((profile) => profile.matchType === 'exact')
-        : mainProfiles,
-    [isRoleQuery, mainProfiles]
-  )
-  const suggestedProfiles = useMemo(
-    () =>
-      isRoleQuery
-        ? mainProfiles.filter((profile) => profile.matchType === 'suggested')
-        : [],
-    [isRoleQuery, mainProfiles]
-  )
-  const isInitialSearchLoading = hasSearched && status === 'LoadingFirstPage'
-
-  const disableLoadMore = status === 'Exhausted' || status === 'LoadingMore'
-
-  function normalizeSearchValue(slot2: Slot2Value, value: string) {
-    const trimmed = value.trim()
-    if (!trimmed) return ''
-    if (slot2 !== 'works_as' && slot2 !== 'worked_as') return trimmed
-    // Keep role queries predictable for slug matching.
-    return trimmed.replace(/\s+/g, ' ')
-  }
+  const isInitialSearchLoading = hasSearched && searchResultsQuery.isPending
+  const isRefreshing = searchResultsQuery.isFetching
+  const disableLoadMore =
+    isRefreshing || !searchResultsQuery.data || searchResultsQuery.data.isDone
 
   function handleSearch(slot2: Slot2Value, slot3: string) {
     const normalized = normalizeSearchValue(slot2, slot3)
     if (!normalized) return
+    setSearchLimit(10)
+    setSelectedProfileId(null)
     setSearchKey(Date.now())
     setSearchParams({ slot2, slot3: normalized })
   }
@@ -97,9 +82,8 @@ function SearchPage() {
   }
 
   function handleNextPage() {
-    if (status !== 'CanLoadMore') return
-    setMainVisibleCount((current) => current + 10)
-    loadMore(10)
+    if (disableLoadMore) return
+    setSearchLimit((current) => current + 10)
   }
 
   return (
@@ -135,50 +119,15 @@ function SearchPage() {
             isSearching={isInitialSearchLoading}
             resultsSlot={
               hasSearched && !isInitialSearchLoading ? (
-                <div className="flex w-full flex-col gap-6">
-                  <SearchResultsTable
-                    title="Results"
-                    profiles={exactProfiles}
-                    isLoading={false}
-                    emptyMessage="No profiles found. Try another search."
-                    onRefresh={handleRefresh}
-                    isRefreshing={status === 'LoadingFirstPage' || status === 'LoadingMore'}
-                    onProfileClick={(profileId) =>
-                      setSelectedProfileId(profileId as Id<'profiles'>)
-                    }
-                  />
-                  {suggestedProfiles.length > 0 ? (
-                    <SearchResultsTable
-                      title="Suggested/Similar Profiles"
-                      profiles={suggestedProfiles}
-                      isLoading={false}
-                      emptyMessage="No suggested profiles."
-                      onProfileClick={(profileId) =>
-                        setSelectedProfileId(profileId as Id<'profiles'>)
-                      }
-                    />
-                  ) : null}
-
-                  {mainProfiles.length > 0 ? (
-                    <Pagination>
-                      <PaginationContent>
-                        <PaginationItem>
-                          <PaginationNext
-                            href="#"
-                            onClick={(event) => {
-                              event.preventDefault()
-                              handleNextPage()
-                            }}
-                            aria-disabled={disableLoadMore}
-                            className={cn(
-                              disableLoadMore ? 'pointer-events-none opacity-50' : undefined
-                            )}
-                          />
-                        </PaginationItem>
-                      </PaginationContent>
-                    </Pagination>
-                  ) : null}
-                </div>
+                <SearchResultsContent
+                  profiles={mainProfiles}
+                  isRoleQuery={isRoleQuery}
+                  isRefreshing={isRefreshing}
+                  disableLoadMore={disableLoadMore}
+                  onRefresh={handleRefresh}
+                  onLoadMore={handleNextPage}
+                  onProfileClick={(profileId) => setSelectedProfileId(profileId as Id<'profiles'>)}
+                />
               ) : null
             }
           />
@@ -212,40 +161,5 @@ function SearchPage() {
         />
       )}
     </div>
-  )
-}
-
-function SelectedProfileDetailDrawer({
-  organizationId,
-  selectedProfileId,
-  open,
-  onOpenChange,
-}: {
-  organizationId: Id<'organizations'>
-  selectedProfileId: Id<'profiles'>
-  open: boolean
-  onOpenChange: (nextOpen: boolean) => void
-}) {
-  const convex = useConvex()
-  const selectedProfileQuery = useQuery({
-    queryKey: ['profile-detail', organizationId, selectedProfileId],
-    staleTime: Infinity,
-    gcTime: 1000 * 60 * 30,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-    queryFn: async () =>
-      await convex.query(api.functions.profiles.queries.getForViewer, {
-        organizationId,
-        id: selectedProfileId,
-      }),
-  })
-
-  return (
-    <ProfileDetailDrawer
-      open={open}
-      onOpenChange={onOpenChange}
-      profile={selectedProfileQuery.data ?? undefined}
-      isLoading={selectedProfileQuery.isLoading}
-    />
   )
 }

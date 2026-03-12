@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import type { Id } from '@convex/_generated/dataModel'
 import { useForm } from '@tanstack/react-form'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
@@ -11,12 +11,21 @@ import { Step3ConfirmProfile } from '@/components/onboarding/steps/Step3ConfirmP
 import { ClaimWithPassword } from '@/components/onboarding/steps/claim/ClaimWithPassword'
 import { OnboardingFlowImage } from '@/components/onboarding/OnboardingFlowImage'
 import { BackgroundBeams } from '@/components/ui/background-beams'
+import { getPublicOrganizationsListFn } from '@/lib/get-organization-data.functions'
 
 export const Route = createFileRoute('/onboarding')({
+  beforeLoad: async (ctx) => {
+    if (ctx.context.isAuthenticated) {
+      throw redirect({ to: '/home' })
+    }
+    const organizations = await getPublicOrganizationsListFn()
+    return { organizations }
+  },
   component: OnboardingRoute,
 })
 
 function OnboardingRoute() {
+  const { organizations } = Route.useRouteContext()
   const navigate = useNavigate()
   const steps = useMemo(
     () => [
@@ -128,6 +137,7 @@ function OnboardingRoute() {
                 <div className="mt-6">
                   {stepIndex === 0 ? (
                     <Step1OrgPassword
+                      organizations={organizations}
                       savedOrganizationId={draftForm.state.values.organizationId}
                       savedPassword={draftForm.state.values.orgPassword}
                       onDraftChange={({ organizationId: nextOrgId, password: nextPassword }) => {

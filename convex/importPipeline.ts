@@ -50,7 +50,7 @@ export const processImportQueue = action({
     const provider = getLinkedInProvider()
     let done = 0
     let failed = 0
-    const orgIdsTouched = new Set<Id<'organizations'>>()
+    
     for (const item of batch) {
       const username = usernameFromUrl(item.linkedInUrl)
       if (!username) {
@@ -115,7 +115,6 @@ export const processImportQueue = action({
           id: item.id,
           status: 'done',
         })
-        orgIdsTouched.add(item.organizationId)
         done++
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e)
@@ -126,12 +125,6 @@ export const processImportQueue = action({
         })
         failed++
       }
-    }
-    // TODO: figure out how to handle this in a more efficient way. Batches are a max size of 7 
-    for (const orgId of orgIdsTouched) {
-      await ctx.runMutation(api.functions.chatQuery.mutations.rebuildOrganizationFacets, {
-        organizationId: orgId,
-      })
     }
     if (batch.length === limit) {
       await ctx.runMutation(api.functions.importQueue.mutations.scheduleNextPipelineRun, {

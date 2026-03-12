@@ -25,3 +25,12 @@ export const getOrganizationsListFn = createServerFn({ method: "GET" }).handler(
 		return await getOrganizationsList();
 	},
 );
+
+export const getPublicOrganizationsListFn = createServerFn({
+	method: "GET",
+}).handler(async () => {
+	const { getPublicOrganizationsList } = await import(
+		"./get-organization-data.server"
+	);
+	return await getPublicOrganizationsList();
+});

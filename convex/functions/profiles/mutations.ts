@@ -1,4 +1,6 @@
+import type { Id } from '../../_generated/dataModel'
 import { mutation } from '../../_generated/server'
+import { internal } from '../../_generated/api'
 import { v } from 'convex/values'
 import { deriveCurrentExperienceFromStored } from '../../lib/profiles/deriveCurrentExperience'
 import { educationEntry, experienceEntry } from '../../lib/validators'
@@ -12,6 +14,16 @@ import {
   toPastJobTitlesSearchSlugFromExperience,
   toSuggestSearchText,
 } from './helpers'
+import { extractFacetTokens } from '../facets/helpers'
+
+const EMPTY_TOKENS = {
+  companies: [] as string[],
+  currentCompanies: [] as string[],
+  majors: [] as string[],
+  schools: [] as string[],
+  currentRoles: [] as string[],
+  pastRoles: [] as string[],
+}
 
 export const create = mutation({
   args: profileInsertValidator,
@@ -35,7 +47,14 @@ export const create = mutation({
       currentJobTitlesSearchSlug: toCurrentJobTitlesSearchSlugFromExperience(args.experience),
       pastJobTitlesSearchSlug: toPastJobTitlesSearchSlugFromExperience(args.experience),
     }
-    return await ctx.db.insert('profiles', doc)
+    const id = await ctx.db.insert('profiles', doc)
+    const newTokens = extractFacetTokens(doc)
+    await ctx.scheduler.runAfter(0, internal.functions.facets.mutations.applyProfileFacetChanges, {
+      organizationId: args.organizationId,
+      oldTokens: EMPTY_TOKENS,
+      newTokens,
+    })
+    return id
   },
 })
 
@@ -95,7 +114,17 @@ export const update = mutation({
     if (current.suggestSearchText !== nextSuggestSearchText) {
       patchDoc.suggestSearchText = nextSuggestSearchText
     }
+    const oldTokens = extractFacetTokens(current)
     await ctx.db.patch(id, patchDoc)
+    const updated = await ctx.db.get(id)
+    if (updated) {
+      const newTokens = extractFacetTokens(updated)
+      await ctx.scheduler.runAfter(0, internal.functions.facets.mutations.applyProfileFacetChanges, {
+        organizationId: current.organizationId,
+        oldTokens,
+        newTokens,
+      })
+    }
     return id
   },
 })
@@ -103,7 +132,18 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id('profiles') },
   handler: async (ctx, args) => {
-    await ctx.db.delete(args.id)
+    const doc = await ctx.db.get(args.id)
+    if (doc) {
+      const oldTokens = extractFacetTokens(doc)
+      await ctx.db.delete(args.id)
+      await ctx.scheduler.runAfter(0, internal.functions.facets.mutations.applyProfileFacetChanges, {
+        organizationId: doc.organizationId,
+        oldTokens,
+        newTokens: EMPTY_TOKENS,
+      })
+    } else {
+      await ctx.db.delete(args.id)
+    }
   },
 })
 
@@ -143,11 +183,24 @@ export const upsertFromImport = mutation({
       ),
       pastJobTitlesSearchSlug: toPastJobTitlesSearchSlugFromExperience(args.profile.experience),
     }
+    const oldTokens = existing ? extractFacetTokens(existing) : EMPTY_TOKENS
+    let profileId: Id<'profiles'>
     if (existing) {
       await ctx.db.patch(existing._id, doc)
-      return existing._id
+      profileId = existing._id
+    } else {
+      profileId = await ctx.db.insert('profiles', doc)
     }
-    return await ctx.db.insert('profiles', doc)
+    const saved = await ctx.db.get(profileId)
+    if (saved) {
+      const newTokens = extractFacetTokens(saved)
+      await ctx.scheduler.runAfter(0, internal.functions.facets.mutations.applyProfileFacetChanges, {
+        organizationId: args.organizationId,
+        oldTokens,
+        newTokens,
+      })
+    }
+    return profileId
   },
 })
 

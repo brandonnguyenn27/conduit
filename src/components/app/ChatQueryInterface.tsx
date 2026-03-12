@@ -1,6 +1,6 @@
 import { useQuery } from 'convex/react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { type ReactNode, useState } from 'react'
+import { type ReactNode, useMemo, useState } from 'react'
 
 import {
   Combobox,
@@ -23,14 +23,15 @@ import { Spinner } from '@/components/ui/spinner'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { cn } from '@/lib/utils'
+import { useDebouncedValue } from '@/hooks/use-debounced-value'
 
 import {
   CHAT_QUERY_CONFIG,
   type Slot1Value,
   type Slot2Value,
   type Slot3Value,
+  getFacetKeyForSlot2,
   getSlot2Options,
-  getSlot3OptionsFromFacets,
 } from './chat-query-config'
 
 interface ChatQueryInterfaceProps {
@@ -49,11 +50,6 @@ export function ChatQueryInterface({
   isSearching = false,
 }: ChatQueryInterfaceProps) {
   const config = CHAT_QUERY_CONFIG
-  const facets = useQuery(
-    api.functions.chatQuery.queries.getChatQueryOptions,
-    organizationId ? { organizationId } : 'skip'
-  )
-
   const [slot1, setSlot1] = useState<Slot1Value>(() =>
     config.slot1[0]?.value ?? 'alumni'
   )
@@ -62,15 +58,38 @@ export function ChatQueryInterface({
     return opts[0]?.value ?? ''
   })
   const [slot3, setSlot3] = useState<Slot3Value | ''>('')
+  const [inputValue, setInputValue] = useState('')
+  const debouncedInput = useDebouncedValue(inputValue, 250)
 
   const slot2Options = getSlot2Options(slot1, config)
   const effectiveSlot2 = slot2Options.some((o) => o.value === slot2)
     ? slot2
     : slot2Options[0]?.value ?? ''
-  const slot3Options =
-    effectiveSlot2 && facets
-      ? getSlot3OptionsFromFacets(effectiveSlot2 as Slot2Value, facets)
-      : []
+  const selectedFacetKey = effectiveSlot2
+    ? getFacetKeyForSlot2(effectiveSlot2 as Slot2Value)
+    : null
+
+  const browsePage = useQuery(
+    api.functions.facets.queries.getFacetPage,
+    organizationId && selectedFacetKey
+      ? { organizationId, facet: selectedFacetKey }
+      : 'skip'
+  )
+
+  const isSearchMode = debouncedInput.trim().length > 0
+  const searchResults = useQuery(
+    api.functions.facets.queries.searchFacet,
+    organizationId && selectedFacetKey && isSearchMode
+      ? { organizationId, facet: selectedFacetKey, q: debouncedInput.trim() }
+      : 'skip'
+  )
+
+  const slot3Options = useMemo(() => {
+    const values = isSearchMode ? searchResults : browsePage?.items
+    if (!values) return []
+    return values.map((v) => ({ value: v, label: v }))
+  }, [isSearchMode, searchResults, browsePage])
+
   const effectiveSlot3 = slot3Options.some((o) => o.value === slot3)
     ? slot3
     : ''
@@ -82,15 +101,17 @@ export function ChatQueryInterface({
     const nextSlot2Options = getSlot2Options(value, config)
     setSlot2(nextSlot2Options[0]?.value ?? '')
     setSlot3('')
+    setInputValue('')
   }
 
   function handleSlot2Change(value: Slot2Value) {
     setSlot2(value)
     setSlot3('')
+    setInputValue('')
   }
 
-  const isLoading = organizationId && facets === undefined
-  const hasNoFacets = organizationId && facets === null
+  const isLoading = organizationId && selectedFacetKey && browsePage === undefined
+  const hasNoFacets = organizationId && selectedFacetKey && browsePage !== undefined && browsePage.items.length === 0
   const slot3Placeholder = isLoading
     ? 'Loading...'
     : hasNoFacets
@@ -158,6 +179,7 @@ export function ChatQueryInterface({
         <Combobox
           value={effectiveSlot3}
           onValueChange={(v) => setSlot3(v as Slot3Value)}
+          onInputValueChange={(v) => setInputValue(v)}
           items={slot3Options}
         >
           <ComboboxInput

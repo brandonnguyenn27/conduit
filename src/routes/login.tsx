@@ -1,8 +1,13 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
 import { SignInForm } from '@/integrations/better-auth/sign-in-form'
 
 export const Route = createFileRoute('/login')({
+  beforeLoad: (ctx) => {
+    if (ctx.context.isAuthenticated) {
+      throw redirect({ to: '/home' })
+    }
+  },
   component: LoginRoute,
 })
 

@@ -1,4 +1,5 @@
 import { api } from "@convex/_generated/api";
+import { ConvexHttpClient } from "convex/browser";
 import { fetchAuthQuery } from "@/lib/auth-server";
 
 type AuthUser = { _id: string; email?: string; name?: string | null };
@@ -18,4 +19,13 @@ export async function getOrganizationData() {
 
 export async function getOrganizationsList() {
 	return await fetchAuthQuery(api.functions.organizations.queries.list, {});
+}
+
+const convexPublicClient = new ConvexHttpClient(process.env.VITE_CONVEX_URL!);
+
+export async function getPublicOrganizationsList() {
+	return await convexPublicClient.query(
+		api.functions.onboarding.queries.listPublicOrganizations,
+		{},
+	);
 }

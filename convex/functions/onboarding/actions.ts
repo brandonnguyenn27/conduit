@@ -3,7 +3,7 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto'
 import { pbkdf2Sync } from 'node:crypto'
 import { action } from '../../_generated/server'
-import { internal } from '../../_generated/api'
+import { api, internal } from '../../_generated/api'
 import { v } from 'convex/values'
 
 const ONBOARDING_TOKEN_TTL_MS = 15 * 60 * 1000
@@ -105,6 +105,14 @@ export const verifyOrgPassword = action({
       organizationId: args.organizationId as string,
       expiresAt,
     }
+  },
+})
+
+export const listOrganizationsForOnboarding = action({
+  args: {},
+  handler: async (ctx): Promise<ReturnType<typeof ctx.runQuery>> => {
+    const organizations = await ctx.runQuery(api.functions.organizations.queries.list, {})
+    return organizations
   },
 })
 

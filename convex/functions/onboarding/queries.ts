@@ -89,3 +89,16 @@ export const getProfilePreview = query({
     }
   },
 })
+
+export const listPublicOrganizations = query({
+  args: {},
+  handler: async (ctx) => {
+    const organizations = await ctx.db.query('organizations').collect()
+    return organizations.map((organization) => ({
+      _id: organization._id,
+      name: organization.name,
+      slug: organization.slug,
+      logoUrl: organization.logoUrl,
+    }))
+  },
+})

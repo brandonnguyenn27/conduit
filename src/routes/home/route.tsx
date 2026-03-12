@@ -40,7 +40,7 @@ function HomeLayout() {
             <NavigationMenuList className="gap-2">
               <NavigationMenuItem>
                 <NavigationMenuLink asChild className="rounded-full px-4 py-2">
-                  <Link
+                <Link
                     to="/home"
                     activeOptions={{ exact: true }}
                     activeProps={{ className: 'bg-accent text-accent-foreground' }}

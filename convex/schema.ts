@@ -125,16 +125,27 @@ export default defineSchema({
     .index('by_status', ['status'])
     .index('by_organization', ['organizationId']),
 
-  organizationFacets: defineTable({
+  organizationFacetValues: defineTable({
     organizationId: v.id('organizations'),
-    companies: v.array(v.string()),
-    currentCompanies: v.optional(v.array(v.string())),
-    majors: v.array(v.string()),
-    schools: v.array(v.string()),
-    currentRoles: v.optional(v.array(v.string())),
-    pastRoles: v.optional(v.array(v.string())),
+    facet: v.union(
+      v.literal('companies'),
+      v.literal('currentCompanies'),
+      v.literal('majors'),
+      v.literal('schools'),
+      v.literal('currentRoles'),
+      v.literal('pastRoles')
+    ),
+    valueKey: v.string(),
+    displayValue: v.string(),
+    count: v.number(),
     updatedAt: v.number(),
-  }).index('by_organization', ['organizationId']),
+  })
+    .index('by_org_facet_valueKey', ['organizationId', 'facet', 'valueKey'])
+    .index('by_org_facet_display', ['organizationId', 'facet', 'displayValue'])
+    .searchIndex('by_facet_search', {
+      searchField: 'displayValue',
+      filterFields: ['organizationId', 'facet'],
+    }),
 
   appUsers: defineTable({
     betterAuthUserId: v.string(),

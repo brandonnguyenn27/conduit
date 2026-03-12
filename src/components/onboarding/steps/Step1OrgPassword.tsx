@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useForm } from '@tanstack/react-form'
-import { useAction, useQuery } from 'convex/react'
+import { useAction } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { Eye, EyeOff } from 'lucide-react'
@@ -23,6 +23,12 @@ import {
 } from '@/components/ui/select'
 
 type Step1OrgPasswordProps = {
+  organizations: Array<{
+    _id: Id<'organizations'>
+    name: string
+    slug: string
+    logoUrl?: string
+  }>
   savedOrganizationId: string
   savedPassword: string
   onDraftChange: (draft: { organizationId?: string; password?: string }) => void
@@ -33,12 +39,12 @@ type Step1OrgPasswordProps = {
 }
 
 export function Step1OrgPassword({
+  organizations,
   savedOrganizationId,
   savedPassword,
   onDraftChange,
   onVerified,
 }: Step1OrgPasswordProps) {
-  const organizations = useQuery(api.functions.organizations.queries.list)
   const verifyOrgPassword = useAction(api.functions.onboarding.actions.verifyOrgPassword)
 
   const [showPassword, setShowPassword] = useState(false)
@@ -161,7 +167,7 @@ export function Step1OrgPassword({
           <Button
             type="submit"
             className="mt-2 w-full"
-            disabled={!canSubmit || isSubmitting || organizations === undefined}
+            disabled={!canSubmit || isSubmitting || organizations.length === 0}
           >
             {isSubmitting ? 'Verifying...' : 'Continue'}
           </Button>
