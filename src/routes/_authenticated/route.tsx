@@ -14,13 +14,13 @@ import {
   NavigationMenuList,
 } from '@/components/ui/navigation-menu'
 
-export const Route = createFileRoute('/home')({
+export const Route = createFileRoute('/_authenticated')({
   loader: () => getOrganizationDataFn(),
-  component: HomeLayout,
+  component: AuthenticatedLayout,
 })
 
-function HomeLayout() {
-  const { organizationId } = useLoaderData({ from: '/home' })
+function AuthenticatedLayout() {
+  const { organizationId } = useLoaderData({ from: '/_authenticated' })
 
   return (
     <OrganizationProvider organizationId={organizationId}>
@@ -40,8 +40,8 @@ function HomeLayout() {
             <NavigationMenuList className="gap-2">
               <NavigationMenuItem>
                 <NavigationMenuLink asChild className="rounded-full px-4 py-2">
-                <Link
-                    to="/home"
+                  <Link
+                    to="/dashboard"
                     activeOptions={{ exact: true }}
                     activeProps={{ className: 'bg-accent text-accent-foreground' }}
                   >
@@ -52,7 +52,7 @@ function HomeLayout() {
               <NavigationMenuItem>
                 <NavigationMenuLink asChild className="rounded-full px-4 py-2">
                   <Link
-                    to="/home/search"
+                    to="/search"
                     activeProps={{ className: 'bg-accent text-accent-foreground' }}
                   >
                     Search
@@ -62,7 +62,7 @@ function HomeLayout() {
               <NavigationMenuItem>
                 <NavigationMenuLink asChild className="rounded-full px-4 py-2">
                   <Link
-                    to="/home/saved"
+                    to="/saved"
                     activeProps={{ className: 'bg-accent text-accent-foreground' }}
                   >
                     Saved
@@ -72,7 +72,7 @@ function HomeLayout() {
               <NavigationMenuItem>
                 <NavigationMenuLink asChild className="rounded-full px-4 py-2">
                   <Link
-                    to="/home/profile"
+                    to="/profile"
                     activeProps={{ className: 'bg-accent text-accent-foreground' }}
                   >
                     Profile

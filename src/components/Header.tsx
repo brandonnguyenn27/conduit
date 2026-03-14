@@ -11,7 +11,9 @@ export default function Header() {
     select: (state) => state.location.pathname,
   })
   const isHome = pathname === '/'
-  const isHomeApp = pathname.startsWith('/home')
+  const isAuthenticatedApp = ['/dashboard', '/search', '/saved', '/profile'].some(
+    (p) => pathname === p || pathname.startsWith(p + '/')
+  )
 
   useEffect(() => {
     if (isHome) {
@@ -19,7 +21,7 @@ export default function Header() {
     }
   }, [isHome])
 
-  if (isHomeApp) return null
+  if (isAuthenticatedApp) return null
 
   return (
     <>

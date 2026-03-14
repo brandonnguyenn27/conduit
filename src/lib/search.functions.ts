@@ -1,20 +1,13 @@
-import { redirect } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import type { Slot2Value } from '@/components/app/chat-query-config'
 import { fetchAuthQuery } from '@/lib/auth-server'
+import { getOrganizationDataFn } from '@/lib/get-organization-data.functions'
 
-export const getSearchRouteDataFn = createServerFn({ method: 'GET' }).handler(async () => {
-  const { getOrganizationData } = await import('./get-organization-data.server')
-  const data = await getOrganizationData()
-
-  if (!data) {
-    throw redirect({ to: '/login' })
-  }
-
-  return { organizationId: data.organizationId ?? null }
-})
+export const getSearchOrganizationIdFn = createServerFn({ method: 'GET' }).handler(
+  async () => getOrganizationDataFn()
+)
 
 export const getProfileDetailForViewerFn = createServerFn({ method: 'POST' })
   .inputValidator(

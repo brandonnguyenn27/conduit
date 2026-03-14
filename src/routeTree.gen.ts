@@ -11,12 +11,12 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as HomeRouteRouteImport } from './routes/home/route'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as HomeIndexRouteImport } from './routes/home/index'
-import { Route as HomeSearchRouteImport } from './routes/home/search'
-import { Route as HomeSavedRouteImport } from './routes/home/saved'
-import { Route as HomeProfileRouteImport } from './routes/home/profile'
+import { Route as AuthenticatedSearchRouteImport } from './routes/_authenticated/search'
+import { Route as AuthenticatedSavedRouteImport } from './routes/_authenticated/saved'
+import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const OnboardingRoute = OnboardingRouteImport.update({
@@ -29,9 +29,8 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const HomeRouteRoute = HomeRouteRouteImport.update({
-  id: '/home',
-  path: '/home',
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -39,25 +38,25 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const HomeIndexRoute = HomeIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => HomeRouteRoute,
-} as any)
-const HomeSearchRoute = HomeSearchRouteImport.update({
+const AuthenticatedSearchRoute = AuthenticatedSearchRouteImport.update({
   id: '/search',
   path: '/search',
-  getParentRoute: () => HomeRouteRoute,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const HomeSavedRoute = HomeSavedRouteImport.update({
+const AuthenticatedSavedRoute = AuthenticatedSavedRouteImport.update({
   id: '/saved',
   path: '/saved',
-  getParentRoute: () => HomeRouteRoute,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const HomeProfileRoute = HomeProfileRouteImport.update({
+const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
-  getParentRoute: () => HomeRouteRoute,
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
@@ -67,75 +66,73 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/home': typeof HomeRouteRouteWithChildren
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
-  '/home/profile': typeof HomeProfileRoute
-  '/home/saved': typeof HomeSavedRoute
-  '/home/search': typeof HomeSearchRoute
-  '/home/': typeof HomeIndexRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/profile': typeof AuthenticatedProfileRoute
+  '/saved': typeof AuthenticatedSavedRoute
+  '/search': typeof AuthenticatedSearchRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
-  '/home/profile': typeof HomeProfileRoute
-  '/home/saved': typeof HomeSavedRoute
-  '/home/search': typeof HomeSearchRoute
-  '/home': typeof HomeIndexRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/profile': typeof AuthenticatedProfileRoute
+  '/saved': typeof AuthenticatedSavedRoute
+  '/search': typeof AuthenticatedSearchRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/home': typeof HomeRouteRouteWithChildren
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
-  '/home/profile': typeof HomeProfileRoute
-  '/home/saved': typeof HomeSavedRoute
-  '/home/search': typeof HomeSearchRoute
-  '/home/': typeof HomeIndexRoute
+  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/profile': typeof AuthenticatedProfileRoute
+  '/_authenticated/saved': typeof AuthenticatedSavedRoute
+  '/_authenticated/search': typeof AuthenticatedSearchRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/home'
     | '/login'
     | '/onboarding'
-    | '/home/profile'
-    | '/home/saved'
-    | '/home/search'
-    | '/home/'
+    | '/dashboard'
+    | '/profile'
+    | '/saved'
+    | '/search'
     | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
     | '/onboarding'
-    | '/home/profile'
-    | '/home/saved'
-    | '/home/search'
-    | '/home'
+    | '/dashboard'
+    | '/profile'
+    | '/saved'
+    | '/search'
     | '/api/auth/$'
   id:
     | '__root__'
     | '/'
-    | '/home'
+    | '/_authenticated'
     | '/login'
     | '/onboarding'
-    | '/home/profile'
-    | '/home/saved'
-    | '/home/search'
-    | '/home/'
+    | '/_authenticated/dashboard'
+    | '/_authenticated/profile'
+    | '/_authenticated/saved'
+    | '/_authenticated/search'
     | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  HomeRouteRoute: typeof HomeRouteRouteWithChildren
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -157,11 +154,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/home': {
-      id: '/home'
-      path: '/home'
-      fullPath: '/home'
-      preLoaderRoute: typeof HomeRouteRouteImport
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -171,33 +168,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/home/': {
-      id: '/home/'
-      path: '/'
-      fullPath: '/home/'
-      preLoaderRoute: typeof HomeIndexRouteImport
-      parentRoute: typeof HomeRouteRoute
-    }
-    '/home/search': {
-      id: '/home/search'
+    '/_authenticated/search': {
+      id: '/_authenticated/search'
       path: '/search'
-      fullPath: '/home/search'
-      preLoaderRoute: typeof HomeSearchRouteImport
-      parentRoute: typeof HomeRouteRoute
+      fullPath: '/search'
+      preLoaderRoute: typeof AuthenticatedSearchRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/home/saved': {
-      id: '/home/saved'
+    '/_authenticated/saved': {
+      id: '/_authenticated/saved'
       path: '/saved'
-      fullPath: '/home/saved'
-      preLoaderRoute: typeof HomeSavedRouteImport
-      parentRoute: typeof HomeRouteRoute
+      fullPath: '/saved'
+      preLoaderRoute: typeof AuthenticatedSavedRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/home/profile': {
-      id: '/home/profile'
+    '/_authenticated/profile': {
+      id: '/_authenticated/profile'
       path: '/profile'
-      fullPath: '/home/profile'
-      preLoaderRoute: typeof HomeProfileRouteImport
-      parentRoute: typeof HomeRouteRoute
+      fullPath: '/profile'
+      preLoaderRoute: typeof AuthenticatedProfileRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/api/auth/$': {
       id: '/api/auth/$'
@@ -209,27 +206,26 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface HomeRouteRouteChildren {
-  HomeProfileRoute: typeof HomeProfileRoute
-  HomeSavedRoute: typeof HomeSavedRoute
-  HomeSearchRoute: typeof HomeSearchRoute
-  HomeIndexRoute: typeof HomeIndexRoute
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
+  AuthenticatedSavedRoute: typeof AuthenticatedSavedRoute
+  AuthenticatedSearchRoute: typeof AuthenticatedSearchRoute
 }
 
-const HomeRouteRouteChildren: HomeRouteRouteChildren = {
-  HomeProfileRoute: HomeProfileRoute,
-  HomeSavedRoute: HomeSavedRoute,
-  HomeSearchRoute: HomeSearchRoute,
-  HomeIndexRoute: HomeIndexRoute,
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedProfileRoute: AuthenticatedProfileRoute,
+  AuthenticatedSavedRoute: AuthenticatedSavedRoute,
+  AuthenticatedSearchRoute: AuthenticatedSearchRoute,
 }
 
-const HomeRouteRouteWithChildren = HomeRouteRoute._addFileChildren(
-  HomeRouteRouteChildren,
-)
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  HomeRouteRoute: HomeRouteRouteWithChildren,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

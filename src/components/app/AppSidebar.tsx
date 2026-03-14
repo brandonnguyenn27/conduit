@@ -14,9 +14,9 @@ import {
 import { cn } from '@/lib/utils'
 
 const SIDEBAR_ITEMS = [
-  { label: 'Search', href: '/home', icon: Search },
-  { label: 'Saved', href: '/home/saved', icon: Bookmark },
-  { label: 'Profile', href: '/home/profile', icon: User },
+  { label: 'Search', href: '/search', icon: Search },
+  { label: 'Saved', href: '/saved', icon: Bookmark },
+  { label: 'Profile', href: '/profile', icon: User },
 ] as const
 
 export function AppSidebar() {
