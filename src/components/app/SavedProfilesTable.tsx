@@ -19,7 +19,7 @@ type SearchProfile = {
   linkedInUrl: string
 }
 
-interface SearchResultsTableProps {
+interface SavedProfilesTableProps {
   title: string
   profiles: SearchProfile[]
   isLoading: boolean
@@ -29,7 +29,7 @@ interface SearchResultsTableProps {
   onProfileClick?: (profileId: string) => void
 }
 
-export function SearchResultsTable({
+export function SavedProfilesTable({
   title,
   profiles,
   isLoading,
@@ -37,7 +37,7 @@ export function SearchResultsTable({
   onRefresh,
   isRefreshing,
   onProfileClick,
-}: SearchResultsTableProps) {
+}: SavedProfilesTableProps) {
   const organizationId = useOrganization()
   const showEmptyState = !isLoading && profiles.length === 0
 

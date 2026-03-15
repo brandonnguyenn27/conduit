@@ -22,7 +22,7 @@ scripts
 .idea
 skills-lock.json
 .pnpm-store
-
+.agents
 
 # Tooling and caches
 .tanstack

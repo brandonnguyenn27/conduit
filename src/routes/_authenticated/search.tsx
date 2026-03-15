@@ -5,7 +5,12 @@ import { AuroraText } from '@/components/ui/aurora-text'
 import { DotPattern } from '@/components/ui/dot-pattern'
 import { cn } from '@/lib/utils'
 
-import { SearchPageContent } from './SearchPageContent'
+import { SearchPageContent } from '../../components/app/SearchPageContent'
+
+export const Route = createFileRoute('/_authenticated/search')({
+  pendingComponent: SearchPageSkeleton,
+  component: SearchPage,
+})
 
 function SearchPageSkeleton() {
   return (
@@ -43,7 +48,3 @@ function SearchPage() {
   )
 }
 
-export const Route = createFileRoute('/_authenticated/search')({
-  pendingComponent: SearchPageSkeleton,
-  component: SearchPage,
-})

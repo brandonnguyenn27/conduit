@@ -1,5 +1,6 @@
 import type { Id } from '@convex/_generated/dataModel'
 
+import { SaveProfileButton } from './SaveProfileButton'
 import {
   Drawer,
   DrawerContent,
@@ -9,6 +10,7 @@ import {
 } from '@/components/ui/drawer'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useOrganization } from '@/contexts/OrganizationContext'
 
 type DatePart = {
   year: number
@@ -57,6 +59,8 @@ export function ProfileDetailDrawer({
   profile,
   isLoading,
 }: ProfileDetailDrawerProps) {
+  const organizationId = useOrganization()
+
   return (
     <Drawer open={open} onOpenChange={onOpenChange} direction="right">
       <DrawerContent className="data-[vaul-drawer-direction=right]:sm:max-w-xl">
@@ -73,15 +77,25 @@ export function ProfileDetailDrawer({
               </DrawerDescription>
             </div>
             {profile ? (
-              <a
-                href={profile.linkedInUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={`Open ${profile.name} on LinkedIn`}
-                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-border/70 hover:bg-muted"
-              >
-                <LinkedInIcon className="h-6 w-6" />
-              </a>
+              <div className="flex shrink-0 items-center justify-end gap-2">
+                {organizationId ? (
+                  <SaveProfileButton
+                    profileId={profile._id}
+                    organizationId={organizationId}
+                    className="h-11 w-11"
+                    iconClassName="h-5 w-5"
+                  />
+                ) : null}
+                <a
+                  href={profile.linkedInUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`Open ${profile.name} on LinkedIn`}
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-border/70 hover:bg-muted"
+                >
+                  <LinkedInIcon className="h-6 w-6" />
+                </a>
+              </div>
             ) : null}
           </div>
         </DrawerHeader>

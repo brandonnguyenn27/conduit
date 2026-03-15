@@ -2,7 +2,6 @@ import { query, type QueryCtx } from '../../_generated/server'
 import { v } from 'convex/values'
 import { paginationOptsValidator, paginationResultValidator } from 'convex/server'
 import { authComponent } from '../../auth'
-import { resolveSearchResultDisplayFields } from '../../lib/profiles/searchResultDisplay'
 import { slugifySearchToken } from '../../lib/search/slug'
 import { normalizeRoleExact, splitJobTitlesByTenure, toRoleSearchQuery } from './helpers'
 import type { Id } from '../../_generated/dataModel'
@@ -228,7 +227,8 @@ export const searchProfilesPaginated = query({
     return {
       ...result,
       page: finalPage.ordered.map((profile) => {
-        const { headline, currentCompany } = resolveSearchResultDisplayFields(profile)
+        const headline = profile.currentExperience?.title || ''
+        const currentCompany = profile.currentExperience?.companyName || profile.currentCompany
         const matchType: 'exact' | 'suggested' = suggestedIds.has(profile._id)
           ? 'suggested'
           : 'exact'
