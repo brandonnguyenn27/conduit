@@ -11,6 +11,7 @@ import {
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useOrganization } from '@/contexts/OrganizationContext'
+import { groupExperiencesByCompany } from '@/lib/experience'
 
 type DatePart = {
   year: number
@@ -117,18 +118,39 @@ export function ProfileDetailDrawer({
 
               <section className="space-y-3">
                 <h3 className="font-semibold">Experience</h3>
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {profile.experience.length > 0 ? (
-                    profile.experience.map((item, index) => (
-                      <article key={`${item.companyName}-${item.title}-${index}`} className="space-y-1">
-                        <p className="font-medium">{item.title}</p>
-                        <p className="text-sm">{item.companyName}</p>
-                        <p className="text-muted-foreground text-xs">
-                          {[formatDateRange(item.start, item.end), item.location, item.employmentType]
-                            .filter(Boolean)
-                            .join(' · ')}
-                        </p>
-                      </article>
+                    groupExperiencesByCompany(profile.experience).map((group, index) => (
+                      <div key={`${group.companyName}-${index}`} className="flex gap-3">
+                         <div className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted">
+                           <span className="text-lg font-semibold text-muted-foreground">
+                             {group.companyName.charAt(0)}
+                           </span>
+                         </div>
+                         <div className="flex-1 space-y-3">
+                           <h4 className="font-semibold">{group.companyName}</h4>
+                           <div className="relative">
+                             {group.roles.length > 1 && (
+                               <div className="absolute left-[7px] top-2 bottom-6 w-px bg-border" />
+                             )}
+                             <div className="space-y-3">
+                               {group.roles.map((item, roleIndex) => (
+                                 <article key={`${item.title}-${roleIndex}`} className={`relative space-y-1 ${group.roles.length > 1 ? 'pl-6' : ''}`}>
+                                   {group.roles.length > 1 && (
+                                     <div className="absolute left-1 top-[10px] h-2 w-2 rounded-full bg-border" />
+                                   )}
+                                   <p className="font-medium">{item.title}</p>
+                                   <p className="text-muted-foreground text-xs">
+                                     {[formatDateRange(item.start, item.end), item.location, item.employmentType]
+                                       .filter(Boolean)
+                                       .join(' · ')}
+                                   </p>
+                                 </article>
+                               ))}
+                             </div>
+                           </div>
+                         </div>
+                      </div>
                     ))
                   ) : (
                     <p className="text-muted-foreground text-sm">No experience listed.</p>

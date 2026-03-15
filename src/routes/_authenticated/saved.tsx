@@ -37,8 +37,13 @@ function SavedPageSkeleton() {
   return (
     <div className="relative min-h-[70vh] w-full overflow-hidden">
       <DotPattern
+        width={32}
+        height={32}
+        cx={1}
+        cy={1}
+        cr={1.5}
         className={cn(
-          'mask-[radial-gradient(400px_circle_at_center,white,transparent)]'
+          'mask-[radial-gradient(800px_circle_at_center,white,transparent)]'
         )}
       />
       <div className="relative z-10 flex min-h-[70vh] flex-col items-center justify-start gap-8 py-10">
@@ -80,8 +85,13 @@ function SavedPage() {
   return (
     <div className="relative min-h-[70vh] w-full overflow-hidden">
       <DotPattern
+        width={32}
+        height={32}
+        cx={1}
+        cy={1}
+        cr={1.5}
         className={cn(
-          'mask-[radial-gradient(400px_circle_at_center,white,transparent)]'
+          'mask-[radial-gradient(800px_circle_at_center,white,transparent)]'
         )}
       />
 

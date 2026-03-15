@@ -245,3 +245,35 @@ export const searchProfilesPaginated = query({
     }
   },
 })
+
+export const getMyProfile = query({
+  args: {
+    organizationId: v.id('organizations'),
+  },
+  handler: async (ctx, args) => {
+    const user = await authComponent.safeGetAuthUser(ctx)
+    if (!user) {
+      throw new Error('Unauthorized')
+    }
+
+    const appUser = await ctx.db
+      .query('appUsers')
+      .withIndex('by_better_auth_user', (q) => q.eq('betterAuthUserId', user._id))
+      .unique()
+
+    if (!appUser || appUser.organizationId !== args.organizationId) {
+      throw new Error('Forbidden')
+    }
+
+    if (!appUser.profileId) {
+      return null
+    }
+
+    const profile = await ctx.db.get(appUser.profileId)
+    if (!profile || profile.organizationId !== args.organizationId) {
+      return null
+    }
+
+    return profile
+  },
+})

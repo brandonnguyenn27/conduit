@@ -42,9 +42,9 @@ export function SearchResultsTable({
   const showEmptyState = !isLoading && profiles.length === 0
 
   return (
-    <Card className="rounded-lg border-border/70 bg-white/70 backdrop-blur-md dark:bg-zinc-900/70">
+    <Card className="rounded-lg border-border/70 bg-white/70 backdrop-blur-md dark:bg-zinc-900/70 font-secondary">
       <CardHeader className="flex flex-row items-center justify-between gap-4">
-        <CardTitle className="font-(family-name:--font-editorial) text-2xl">
+        <CardTitle className="font-editorial text-2xl">
           {title}
         </CardTitle>
         {onRefresh ? (
