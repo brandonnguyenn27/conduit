@@ -5,7 +5,7 @@ import { fetchAuthQuery } from '@/lib/auth-server'
 
 export const getSavedProfilesForViewerFn = createServerFn({ method: 'GET' })
   .inputValidator(
-    (data: { organizationId: Id<'organizations'> }) => data
+    (data: { organizationId: Id<'organizations'>; cursor?: string | null }) => data
   )
   .handler(async ({ data }) => {
     try {
@@ -13,6 +13,10 @@ export const getSavedProfilesForViewerFn = createServerFn({ method: 'GET' })
         api.functions.savedProfiles.queries.listPopulatedByUserAndOrg,
         {
           organizationId: data.organizationId,
+          paginationOpts: {
+            numItems: 10,
+            cursor: data.cursor ?? null,
+          },
         }
       )
 

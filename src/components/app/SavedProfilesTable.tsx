@@ -1,5 +1,16 @@
+import { motion, AnimatePresence } from 'framer-motion'
+import { useState, useEffect, useRef } from 'react'
 import { SaveProfileButton } from './SaveProfileButton'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination'
 import {
   Table,
   TableBody,
@@ -27,6 +38,13 @@ interface SavedProfilesTableProps {
   onRefresh?: () => void
   isRefreshing?: boolean
   onProfileClick?: (profileId: string) => void
+  hasMore?: boolean
+  hasPrevious?: boolean
+  onNext?: () => void
+  onPrevious?: () => void
+  currentPage?: number
+  knownPages?: number
+  onPageSelect?: (page: number) => void
 }
 
 export function SavedProfilesTable({
@@ -37,9 +55,28 @@ export function SavedProfilesTable({
   onRefresh,
   isRefreshing,
   onProfileClick,
+  hasMore,
+  hasPrevious,
+  onNext,
+  onPrevious,
+  currentPage = 1,
+  knownPages = 1,
+  onPageSelect,
 }: SavedProfilesTableProps) {
   const organizationId = useOrganization()
   const showEmptyState = !isLoading && profiles.length === 0
+
+  const [direction, setDirection] = useState(0)
+  const prevPageRef = useRef(currentPage)
+
+  useEffect(() => {
+    if (currentPage !== prevPageRef.current) {
+      setDirection(currentPage > prevPageRef.current ? 1 : -1)
+      prevPageRef.current = currentPage
+    }
+  }, [currentPage])
+
+  const paddingRows = Math.max(0, 10 - profiles.length)
 
   return (
     <Card className="rounded-lg border-border/70 bg-white/70 backdrop-blur-md dark:bg-zinc-900/70">
@@ -59,59 +96,141 @@ export function SavedProfilesTable({
         ) : null}
       </CardHeader>
       <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="text-xs uppercase tracking-wide">Name</TableHead>
-              <TableHead className="text-xs uppercase tracking-wide">Current Occupation</TableHead>
-              <TableHead className="text-xs uppercase tracking-wide">Company</TableHead>
-              <TableHead className="text-right text-xs uppercase tracking-wide">LinkedIn</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {profiles.map((profile) => (
-              <TableRow
-                key={profile._id}
-                onClick={() => onProfileClick?.(profile._id)}
-                className={cn(
-                  'group',
-                  onProfileClick ? 'cursor-pointer' : 'cursor-default'
-                )}
-              >
-                <TableCell className="py-4 font-medium">{profile.name}</TableCell>
-                <TableCell className="text-muted-foreground py-4">{profile.headline}</TableCell>
-                <TableCell className="py-4">{profile.currentCompany ?? '—'}</TableCell>
-                <TableCell className="py-4">
-                  <div className="flex items-center justify-end gap-2">
-                    {organizationId ? (
-                      <SaveProfileButton
-                        profileId={profile._id as any}
-                        organizationId={organizationId}
-                        className="h-9 w-9"
-                      />
-                    ) : null}
-                    <a
-                      href={profile.linkedInUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={`Open ${profile.name} on LinkedIn`}
-                      onClick={(event) => {
-                        event.stopPropagation()
-                      }}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border/70 hover:bg-muted"
+        <div className="relative w-full overflow-hidden grid" style={{ gridTemplateColumns: '1fr', gridTemplateRows: '1fr' }}>
+          <AnimatePresence custom={direction} initial={false} mode="wait">
+            <motion.div
+              key={currentPage}
+              custom={direction}
+              variants={{
+                enter: (dir: number) => ({ x: dir > 0 ? 30 : -30, opacity: 0 }),
+                center: { x: 0, opacity: 1 },
+                exit: (dir: number) => ({ x: dir < 0 ? 30 : -30, opacity: 0 })
+              }}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.25, ease: 'easeInOut' }}
+              className="col-start-1 row-start-1 w-full"
+            >
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs uppercase tracking-wide">Name</TableHead>
+                    <TableHead className="text-xs uppercase tracking-wide">Current Occupation</TableHead>
+                    <TableHead className="text-xs uppercase tracking-wide">Company</TableHead>
+                    <TableHead className="text-right text-xs uppercase tracking-wide">LinkedIn</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {profiles.map((profile) => (
+                    <TableRow
+                      key={profile._id}
+                      onClick={() => onProfileClick?.(profile._id)}
+                      className={cn(
+                        'group',
+                        onProfileClick ? 'cursor-pointer' : 'cursor-default'
+                      )}
                     >
-                      <LinkedInIcon />
-                    </a>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                      <TableCell className="py-4 font-medium">{profile.name}</TableCell>
+                      <TableCell className="text-muted-foreground py-4">{profile.headline}</TableCell>
+                      <TableCell className="py-4">{profile.currentCompany ?? '—'}</TableCell>
+                      <TableCell className="py-4">
+                        <div className="flex items-center justify-end gap-2">
+                          {organizationId ? (
+                            <SaveProfileButton
+                              profileId={profile._id as any}
+                              organizationId={organizationId}
+                              className="h-9 w-9"
+                            />
+                          ) : null}
+                          <a
+                            href={profile.linkedInUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={`Open ${profile.name} on LinkedIn`}
+                            onClick={(event) => {
+                              event.stopPropagation()
+                            }}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border/70 hover:bg-muted"
+                          >
+                            <LinkedInIcon />
+                          </a>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {Array.from({ length: paddingRows }).map((_, i) => (
+                    <TableRow key={`padding-${i}`} className="pointer-events-none border-b-0 hover:bg-transparent">
+                      <TableCell className="py-4">
+                        <div className="h-9 w-px"></div>
+                      </TableCell>
+                      <TableCell className="py-4"></TableCell>
+                      <TableCell className="py-4"></TableCell>
+                      <TableCell className="py-4"></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </motion.div>
+          </AnimatePresence>
+        </div>
 
         {showEmptyState ? (
           <p className="text-muted-foreground mt-4 text-sm">{emptyMessage}</p>
         ) : null}
+
+        {(hasPrevious || hasMore) && (
+          <div className="mt-4 flex items-center justify-end px-2">
+            <Pagination className="w-auto mx-0">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={(e) => {
+                      e.preventDefault()
+                      if (hasPrevious && onPrevious) onPrevious()
+                    }}
+                    href="#"
+                    aria-disabled={!hasPrevious}
+                    className={!hasPrevious ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                  />
+                </PaginationItem>
+                {Array.from({ length: knownPages }).map((_, i) => {
+                  const pageNum = i + 1
+                  return (
+                    <PaginationItem key={pageNum}>
+                      <PaginationLink
+                        href="#"
+                        isActive={currentPage === pageNum}
+                        onClick={(e: React.MouseEvent) => {
+                          e.preventDefault()
+                          if (onPageSelect) onPageSelect(pageNum)
+                        }}
+                      >
+                        {pageNum}
+                      </PaginationLink>
+                    </PaginationItem>
+                  )
+                })}
+                {hasMore && (
+                  <PaginationItem>
+                    <PaginationEllipsis />
+                  </PaginationItem>
+                )}
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={(e) => {
+                      e.preventDefault()
+                      if (hasMore && onNext) onNext()
+                    }}
+                    href="#"
+                    aria-disabled={!hasMore}
+                    className={!hasMore ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
+        )}
       </CardContent>
     </Card>
   )

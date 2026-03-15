@@ -1,7 +1,7 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 
 import { ProfileDetailDrawer } from '@/components/app/ProfileDetailDrawer'
 import { SavedProfilesTable } from '@/components/app/SavedProfilesTable'
@@ -20,11 +20,11 @@ export const Route = createFileRoute('/_authenticated/saved')({
     const { organizationId } = await getOrganizationDataFn()
     if (!organizationId) return
 
-    await context.queryClient.fetchQuery({
-      queryKey: ['saved-profiles', organizationId],
+    await context.queryClient.prefetchQuery({
+      queryKey: ['saved-profiles', organizationId, null],
       queryFn: async () =>
         await getSavedProfilesForViewerFn({
-          data: { organizationId },
+          data: { organizationId, cursor: null },
         }),
       staleTime: 5 * 60 * 1000, 
     })
@@ -56,7 +56,7 @@ function SavedPageSkeleton() {
           </AuroraText>
         </h1>
         <div className="w-full max-w-6xl space-y-4 px-4 sm:px-6 lg:px-8">
-          <Skeleton className="h-[400px] w-full rounded-xl" />
+          <Skeleton className="h-[880px] w-full rounded-xl" />
         </div>
       </div>
     </div>
@@ -69,18 +69,55 @@ function SavedPage() {
   const [selectedProfileId, setSelectedProfileId] = useState<Id<'profiles'> | null>(
     null
   )
+  const [cursors, setCursors] = useState<(string | null)[]>([null])
+  const [pageIndex, setPageIndex] = useState(0)
+  const [isPending, startTransition] = useTransition()
+
+  const currentCursor = cursors[pageIndex]
 
   const {
-    data: profiles,
+    data: paginatedProfiles,
     refetch,
     isFetching,
   } = useSuspenseQuery({
-    queryKey: ['saved-profiles', organizationId],
+    queryKey: ['saved-profiles', organizationId, currentCursor],
     queryFn: async () =>
       await getSavedProfiles({
-        data: { organizationId: organizationId! },
+        data: { organizationId: organizationId!, cursor: currentCursor },
       }),
   })
+
+  const handleNextPage = () => {
+    if (paginatedProfiles && !paginatedProfiles.isDone) {
+      startTransition(() => {
+        if (cursors.length <= pageIndex + 1) {
+          setCursors((prev) => {
+            const next = [...prev]
+            next[pageIndex + 1] = paginatedProfiles.continueCursor
+            return next
+          })
+        }
+        setPageIndex((prev) => prev + 1)
+      })
+    }
+  }
+
+  const handlePrevPage = () => {
+    if (pageIndex > 0) {
+      startTransition(() => {
+        setPageIndex((prev) => prev - 1)
+      })
+    }
+  }
+
+  const handlePageSelect = (targetPageIndex: number) => {
+    // Only allow selecting pages we already have cursors for
+    if (targetPageIndex >= 0 && targetPageIndex < cursors.length) {
+      startTransition(() => {
+        setPageIndex(targetPageIndex)
+      })
+    }
+  }
 
   return (
     <div className="relative min-h-[70vh] w-full overflow-hidden">
@@ -108,12 +145,19 @@ function SavedPage() {
         <div className="w-full max-w-6xl px-4 sm:px-6 lg:px-8">
           <SavedProfilesTable
             title="Your Favorites"
-            profiles={profiles ?? []}
+            profiles={paginatedProfiles?.page ?? []}
             isLoading={false}
             emptyMessage="You haven't saved any profiles yet."
             onRefresh={refetch}
-            isRefreshing={isFetching}
+            isRefreshing={isFetching || isPending}
             onProfileClick={(id) => setSelectedProfileId(id as Id<'profiles'>)}
+            hasMore={paginatedProfiles ? !paginatedProfiles.isDone : false}
+            hasPrevious={pageIndex > 0}
+            onNext={handleNextPage}
+            onPrevious={handlePrevPage}
+            currentPage={pageIndex + 1}
+            knownPages={cursors.length}
+            onPageSelect={(page) => handlePageSelect(page - 1)}
           />
         </div>
       </div>

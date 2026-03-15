@@ -1,5 +1,6 @@
 import { query } from '../../_generated/server'
 import { v } from 'convex/values'
+import { paginationOptsValidator } from 'convex/server'
 import { authComponent } from '../../auth'
 
 export const listByUserAndOrg = query({
@@ -21,9 +22,11 @@ export const listByUserAndOrg = query({
   },
 })
 
+
 export const listPopulatedByUserAndOrg = query({
   args: {
     organizationId: v.id('organizations'),
+    paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
     const user = await authComponent.safeGetAuthUser(ctx)
@@ -31,16 +34,16 @@ export const listPopulatedByUserAndOrg = query({
       throw new Error('Unauthorized')
     }
 
-    const savedRecords = await ctx.db
+    const savedRecordsResult = await ctx.db
       .query('savedProfiles')
       .withIndex('by_user_org', (q) =>
         q.eq('userId', user._id).eq('organizationId', args.organizationId)
       )
       .order('desc')
-      .collect()
+      .paginate(args.paginationOpts)
 
     const profiles = []
-    for (const saved of savedRecords) {
+    for (const saved of savedRecordsResult.page) {
       const profileInfo = await ctx.db.get(saved.profileId)
       if (profileInfo) {
         profiles.push({
@@ -53,7 +56,10 @@ export const listPopulatedByUserAndOrg = query({
       }
     }
 
-    return profiles
+    return {
+      ...savedRecordsResult,
+      page: profiles,
+    }
   },
 })
 
