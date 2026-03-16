@@ -16,7 +16,7 @@ import { getPublicOrganizationsListFn } from '@/lib/get-organization-data.functi
 export const Route = createFileRoute('/onboarding')({
   beforeLoad: async (ctx) => {
     if (ctx.context.isAuthenticated) {
-      throw redirect({ to: '/dashboard' })
+      throw redirect({ to: '/explore' })
     }
     const organizations = await getPublicOrganizationsListFn()
     return { organizations }
@@ -193,7 +193,7 @@ function OnboardingRoute() {
                         draftForm.setFieldValue('claimPassword', password)
                       }}
                       onSuccess={() => {
-                        void navigate({ to: '/dashboard' })
+                        void navigate({ to: '/explore' })
                       }}
                     />
                   ) : null}

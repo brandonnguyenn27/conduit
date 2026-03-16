@@ -23,7 +23,7 @@ export function SignInForm() {
 					return;
 				}
 
-				window.location.assign("/dashboard");
+				window.location.assign("/explore");
 			} catch {
 				setApiError("An unexpected error occurred");
 			}

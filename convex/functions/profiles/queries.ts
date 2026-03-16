@@ -277,3 +277,69 @@ export const getMyProfile = query({
     return profile
   },
 })
+
+export const listPaginatedForExplore = query({
+  args: {
+    organizationId: v.id('organizations'),
+    paginationOpts: paginationOptsValidator,
+    filters: v.optional(
+      v.object({
+        industry: v.optional(v.string()),
+        major: v.optional(v.string()),
+        profileType: v.optional(v.union(v.literal('alumni'), v.literal('member'))),
+        class: v.optional(v.string()),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    const user = await authComponent.safeGetAuthUser(ctx)
+    if (!user) {
+      throw new Error('Unauthorized')
+    }
+
+    const result = await ctx.db
+      .query('profiles')
+      .withIndex('by_organization_linkedin', (q) =>
+        q.eq('organizationId', args.organizationId)
+      )
+      .order('desc')
+      .paginate(args.paginationOpts)
+
+    const filters = args.filters
+
+    const filteredPage = result.page.filter((profile) => {
+      if (filters?.industry && profile.industry !== filters.industry) {
+        return false
+      }
+
+      if (filters?.major && !profile.majors.includes(filters.major)) {
+        return false
+      }
+
+      if (filters?.profileType && profile.profileType !== filters.profileType) {
+        return false
+      }
+
+      if (filters?.class && profile.class !== filters.class) {
+        return false
+      }
+
+      return true
+    })
+
+    return {
+      ...result,
+      page: filteredPage.map((profile) => ({
+        _id: profile._id,
+        name: profile.name,
+        headline: profile.currentExperience?.title || '',
+        currentCompany: profile.currentExperience?.companyName || profile.currentCompany,
+        linkedInUrl: profile.linkedInUrl,
+        industry: profile.industry,
+        major: profile.majors[0],
+        profileType: profile.profileType,
+        class: profile.class,
+      })),
+    }
+  },
+})

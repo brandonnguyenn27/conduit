@@ -41,11 +41,11 @@ function AuthenticatedLayout() {
               <NavigationMenuItem>
                 <NavigationMenuLink asChild className="rounded-full px-4 py-2">
                   <Link
-                    to="/dashboard"
+                    to="/explore"
                     activeOptions={{ exact: true }}
                     activeProps={{ className: 'bg-accent text-accent-foreground' }}
                   >
-                    Home
+                    Explore
                   </Link>
                 </NavigationMenuLink>
               </NavigationMenuItem>

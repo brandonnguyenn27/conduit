@@ -11,7 +11,7 @@ export default function Header() {
     select: (state) => state.location.pathname,
   })
   const isHome = pathname === '/'
-  const isAuthenticatedApp = ['/dashboard', '/search', '/saved', '/profile'].some(
+  const isAuthenticatedApp = ['/explore', '/search', '/saved', '/profile'].some(
     (p) => pathname === p || pathname.startsWith(p + '/')
   )
 

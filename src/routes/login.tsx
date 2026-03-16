@@ -5,7 +5,7 @@ import { SignInForm } from '@/integrations/better-auth/sign-in-form'
 export const Route = createFileRoute('/login')({
   beforeLoad: (ctx) => {
     if (ctx.context.isAuthenticated) {
-      throw redirect({ to: '/dashboard' })
+      throw redirect({ to: '/explore' })
     }
   },
   component: LoginRoute,
