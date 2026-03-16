@@ -1,7 +1,7 @@
-import { redirect } from "@tanstack/react-router";
-import { createServerFn } from "@tanstack/react-start";
 import { api } from "@convex/_generated/api";
 import type { Doc } from "@convex/_generated/dataModel";
+import { redirect } from "@tanstack/react-router";
+import { createServerFn } from "@tanstack/react-start";
 import { ConvexHttpClient } from "convex/browser";
 import { fetchAuthQuery } from "@/lib/auth-server";
 
@@ -19,9 +19,10 @@ type AuthUser = { _id: string; email?: string; name?: string | null };
 
 export const getOrganizationDataFn = createServerFn({ method: "GET" }).handler(
 	async () => {
-		const user = (await fetchAuthQuery(api.auth.getCurrentUser, {})) as
-			| AuthUser
-			| null;
+		const user = (await fetchAuthQuery(
+			api.auth.getCurrentUser,
+			{},
+		)) as AuthUser | null;
 		if (!user) {
 			throw redirect({ to: "/login" });
 		}
@@ -42,7 +43,11 @@ export const getOrganizationsListFn = createServerFn({ method: "GET" }).handler(
 	},
 );
 
-const convexPublicClient = new ConvexHttpClient(process.env.VITE_CONVEX_URL!);
+const convexUrl = import.meta.env.VITE_CONVEX_URL;
+if (!convexUrl) {
+	throw new Error("Missing VITE_CONVEX_URL");
+}
+const convexPublicClient = new ConvexHttpClient(convexUrl);
 
 export const getPublicOrganizationsListFn = createServerFn({
 	method: "GET",
@@ -52,3 +57,51 @@ export const getPublicOrganizationsListFn = createServerFn({
 		{},
 	);
 });
+
+export const verifyOrgPasswordFn = createServerFn({ method: "POST" })
+	.inputValidator((data: { organizationId: string; password: string }) => data)
+	.handler(async ({ data }) => {
+		return await convexPublicClient.action(
+			api.functions.onboarding.actions.verifyOrgPassword,
+			{
+				organizationId: data.organizationId as Doc<"organizations">["_id"],
+				password: data.password,
+			},
+		);
+	});
+
+export const getProfileByEmailFn = createServerFn({ method: "POST" })
+	.inputValidator((data: { joinToken: string; email: string }) => data)
+	.handler(async ({ data }) => {
+		return await convexPublicClient.action(
+			api.functions.onboarding.actions.getProfileByEmail,
+			{
+				joinToken: data.joinToken,
+				email: data.email,
+			},
+		);
+	});
+
+export const verifyClaimCodeFn = createServerFn({ method: "POST" })
+	.inputValidator((data: { profileId: string; code: string }) => data)
+	.handler(async ({ data }) => {
+		return await convexPublicClient.action(
+			api.functions.onboarding.actions.verifyClaimCode,
+			{
+				profileId: data.profileId as Doc<"profiles">["_id"],
+				code: data.code,
+			},
+		);
+	});
+
+export const issueClaimCodeFn = createServerFn({ method: "POST" })
+	.inputValidator((data: { joinToken: string; profileId: string }) => data)
+	.handler(async ({ data }) => {
+		return await convexPublicClient.action(
+			api.functions.onboarding.actions.issueClaimCode,
+			{
+				joinToken: data.joinToken,
+				profileId: data.profileId as Doc<"profiles">["_id"],
+			},
+		);
+	});

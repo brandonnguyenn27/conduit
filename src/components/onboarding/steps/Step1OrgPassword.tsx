@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useForm } from '@tanstack/react-form'
-import { useAction } from 'convex/react'
-import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { Eye, EyeOff } from 'lucide-react'
+
+import { verifyOrgPasswordFn } from '@/lib/get-organization-data.functions'
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -45,7 +45,7 @@ export function Step1OrgPassword({
   onDraftChange,
   onVerified,
 }: Step1OrgPasswordProps) {
-  const verifyOrgPassword = useAction(api.functions.onboarding.actions.verifyOrgPassword)
+
 
   const [showPassword, setShowPassword] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
@@ -58,9 +58,11 @@ export function Step1OrgPassword({
     onSubmit: async ({ value }) => {
       setErrorMessage('')
       try {
-        const result = await verifyOrgPassword({
-          organizationId: value.organizationId as Id<'organizations'>,
-          password: value.password,
+        const result = await verifyOrgPasswordFn({
+          data: {
+            organizationId: value.organizationId,
+            password: value.password,
+          },
         })
 
         if (!result.ok) {

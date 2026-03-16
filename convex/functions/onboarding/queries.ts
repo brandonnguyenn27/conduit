@@ -28,6 +28,23 @@ export const getOnboardingToken = internalQuery({
   },
 })
 
+export const getVerificationCode = internalQuery({
+  args: {
+    profileId: v.id('profiles'),
+    code: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const codes = await ctx.db
+      .query('claimCodes')
+      .withIndex('by_profile', (q) => q.eq('profileId', args.profileId))
+      .collect()
+
+    return codes.find(
+      (c) => c.code === args.code && !c.usedAt && c.expiresAt > Date.now()
+    ) ?? null
+  },
+})
+
 export const getProfileByEmailInOrganization = internalQuery({
   args: {
     organizationId: v.id('organizations'),
@@ -48,6 +65,24 @@ export const getProfileByEmailInOrganization = internalQuery({
       organizationId: profile.organizationId,
       email: profile.email,
       name: profile.name,
+    }
+  },
+})
+
+export const getProfileInOrganization = internalQuery({
+  args: {
+    profileId: v.id('profiles'),
+    organizationId: v.id('organizations'),
+  },
+  handler: async (ctx, args) => {
+    const profile = await ctx.db.get(args.profileId)
+    if (!profile || profile.organizationId !== args.organizationId) {
+      return null
+    }
+
+    return {
+      _id: profile._id,
+      organizationId: profile.organizationId,
     }
   },
 })

@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState, useEffect, useRef } from 'react'
 import { SaveProfileButton } from './SaveProfileButton'
+import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Pagination,
@@ -187,11 +188,11 @@ export function SavedProfilesTable({
                   <PaginationPrevious
                     onClick={(e) => {
                       e.preventDefault()
-                      if (hasPrevious && onPrevious) onPrevious()
+                      if (hasPrevious && onPrevious && !isRefreshing) onPrevious()
                     }}
                     href="#"
-                    aria-disabled={!hasPrevious}
-                    className={!hasPrevious ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    aria-disabled={!hasPrevious || isRefreshing}
+                    className={!hasPrevious || isRefreshing ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
                   />
                 </PaginationItem>
                 {Array.from({ length: knownPages }).map((_, i) => {
@@ -203,29 +204,36 @@ export function SavedProfilesTable({
                         isActive={currentPage === pageNum}
                         onClick={(e: React.MouseEvent) => {
                           e.preventDefault()
-                          if (onPageSelect) onPageSelect(pageNum)
+                          if (onPageSelect && !isRefreshing) onPageSelect(pageNum)
                         }}
+                        className={isRefreshing ? 'pointer-events-none opacity-50' : ''}
                       >
                         {pageNum}
                       </PaginationLink>
                     </PaginationItem>
                   )
                 })}
-                {hasMore && (
+                {hasMore && !isRefreshing && (
                   <PaginationItem>
                     <PaginationEllipsis />
                   </PaginationItem>
                 )}
                 <PaginationItem>
-                  <PaginationNext
-                    onClick={(e) => {
-                      e.preventDefault()
-                      if (hasMore && onNext) onNext()
-                    }}
-                    href="#"
-                    aria-disabled={!hasMore}
-                    className={!hasMore ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                  />
+                  {isRefreshing ? (
+                    <span className="inline-flex h-9 w-9 items-center justify-center">
+                      <Spinner className="size-4 text-muted-foreground" />
+                    </span>
+                  ) : (
+                    <PaginationNext
+                      onClick={(e) => {
+                        e.preventDefault()
+                        if (hasMore && onNext) onNext()
+                      }}
+                      href="#"
+                      aria-disabled={!hasMore}
+                      className={!hasMore ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    />
+                  )}
                 </PaginationItem>
               </PaginationContent>
             </Pagination>

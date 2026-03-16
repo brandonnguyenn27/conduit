@@ -44,6 +44,7 @@ export const authComponent = createClient<DataModel>(components.betterAuth, {
           organizationId: orgId,
           email: user.email,
           name: user.name ?? user.email,
+          isAdmin: false,
           createdAt: Date.now(),
         })
       },

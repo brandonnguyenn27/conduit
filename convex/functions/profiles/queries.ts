@@ -297,6 +297,12 @@ export const listPaginatedForExplore = query({
       throw new Error('Unauthorized')
     }
 
+    // Look up appUser only to get profileId for excluding current user
+    const appUser = await ctx.db
+      .query('appUsers')
+      .withIndex('by_better_auth_user', (q) => q.eq('betterAuthUserId', user._id))
+      .unique()
+
     const result = await ctx.db
       .query('profiles')
       .withIndex('by_organization_linkedin', (q) =>
@@ -306,8 +312,13 @@ export const listPaginatedForExplore = query({
       .paginate(args.paginationOpts)
 
     const filters = args.filters
+    const currentUserProfileId = appUser?.profileId
 
     const filteredPage = result.page.filter((profile) => {
+      if (currentUserProfileId && profile._id === currentUserProfileId) {
+        return false
+      }
+
       if (filters?.industry && profile.industry !== filters.industry) {
         return false
       }

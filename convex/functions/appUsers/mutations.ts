@@ -9,6 +9,7 @@ export const create = mutation({
     email: v.string(),
     name: v.string(),
     profileId: v.optional(v.id('profiles')),
+    isAdmin: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert('appUsers', {
@@ -17,6 +18,7 @@ export const create = mutation({
       email: args.email,
       name: args.name,
       profileId: args.profileId,
+      isAdmin: args.isAdmin ?? false,
       createdAt: Date.now(),
     })
   },
@@ -28,6 +30,7 @@ export const update = mutation({
     profileId: v.optional(v.id('profiles')),
     email: v.optional(v.string()),
     name: v.optional(v.string()),
+    isAdmin: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const { id, ...updates } = args
@@ -83,6 +86,7 @@ export const completeOnboarding = mutation({
         organizationId: defaultOrganization._id,
         email: user.email,
         name: user.name ?? user.email,
+        isAdmin: false,
         createdAt: Date.now(),
       }))
 

@@ -153,6 +153,7 @@ export default defineSchema({
     profileId: v.optional(v.id('profiles')),
     email: v.string(),
     name: v.string(),
+    isAdmin: v.optional(v.boolean()),
     createdAt: v.number(),
   })
     .index('by_better_auth_user', ['betterAuthUserId'])
