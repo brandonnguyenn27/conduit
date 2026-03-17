@@ -77,6 +77,7 @@ export const update = mutation({
     jobTitles: v.optional(v.array(v.string())),
     currentCompany: v.optional(v.string()),
     class: v.optional(v.string()),
+    family: v.optional(v.string()),
     claimedByUserId: v.optional(v.string()),
     email: v.optional(v.string()),
   },

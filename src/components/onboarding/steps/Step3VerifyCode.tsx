@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { verifyClaimCodeFn } from "@/lib/get-organization-data.functions";
 
 type Step3VerifyCodeProps = {
-	profileId: Id<"profiles">;
+	profileId: Id<"profiles"> | null;
 	email: string;
 	onVerified: () => void;
 };
@@ -31,6 +31,14 @@ export function Step3VerifyCode({
 		},
 		onSubmit: async ({ value }) => {
 			setErrorMessage("");
+
+			if (!profileId) {
+				setErrorMessage(
+					"We couldn't verify this claim code. Please contact your organization admin.",
+				);
+				return;
+			}
+
 			try {
 				const result = await verifyClaimCodeFn({
 					data: {
@@ -59,13 +67,13 @@ export function Step3VerifyCode({
 
 	return (
 		<div className="grid gap-4">
-			<div className="rounded-md border border-border bg-muted/40 p-4">
-				<p className="text-sm text-muted-foreground">
-					A 4-character claim code was generated for your onboarding. Enter the
-					code from your organization admin for{" "}
-					<span className="font-medium text-foreground">{email}</span>
-				</p>
-			</div>
+				<div className="rounded-md border border-border bg-muted/40 p-4">
+					<p className="text-sm text-muted-foreground">
+						A claim code has been sent to your admin for{" "}
+						<span className="font-medium text-foreground">{email}</span>. Please
+						contact them if your account was found in our system.
+					</p>
+				</div>
 
 			<form
 				className="grid gap-4"

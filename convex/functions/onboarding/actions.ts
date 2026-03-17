@@ -7,7 +7,7 @@ import { api, internal } from '../../_generated/api'
 import { v } from 'convex/values'
 
 const ONBOARDING_TOKEN_TTL_MS = 15 * 60 * 1000
-const CLAIM_CODE_TTL_MS = 10 * 60 * 1000
+const CLAIM_CODE_TTL_MS = 3 * 60 * 60 * 1000
 const CLAIM_CODE_LENGTH = 4
 const CLAIM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 const HASH_PREFIX = 'pbkdf2_sha256'

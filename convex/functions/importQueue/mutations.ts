@@ -35,6 +35,8 @@ export const create = mutation({
     organizationId: v.id('organizations'),
     linkedInUrl: v.string(),
     email: v.optional(v.string()),
+    class: v.optional(v.string()),
+    family: v.optional(v.string()),
     profileType: profileTypeValidator,
   },
   handler: async (ctx, args) => {
@@ -42,6 +44,8 @@ export const create = mutation({
       organizationId: args.organizationId,
       linkedInUrl: args.linkedInUrl,
       email: normalizeOptionalEmail(args.email),
+      class: args.class,
+      family: args.family,
       profileType: args.profileType,
       status: 'pending',
       createdAt: Date.now(),
@@ -62,6 +66,8 @@ export const createMany = mutation({
         v.object({
           linkedInUrl: v.string(),
           email: v.optional(v.string()),
+          class: v.optional(v.string()),
+          family: v.optional(v.string()),
           profileType: profileTypeValidator,
         })
       )
@@ -73,6 +79,8 @@ export const createMany = mutation({
       (args.linkedInUrls?.map((linkedInUrl) => ({
         linkedInUrl,
         email: undefined,
+        class: undefined,
+        family: undefined,
         profileType: undefined,
       })) ??
         [])
@@ -93,6 +101,8 @@ export const createMany = mutation({
           organizationId: args.organizationId,
           linkedInUrl: row.linkedInUrl,
           email: normalizeOptionalEmail(row.email),
+          class: row.class,
+          family: row.family,
           profileType: row.profileType,
           status: 'pending',
           createdAt: now,
@@ -206,6 +216,8 @@ export const claimNextBatch = internalMutation({
       organizationId: (typeof items)[0]['organizationId']
       linkedInUrl: string
       email?: string
+      class?: string
+      family?: string
       profileType?: 'alumni' | 'member'
     }[] = []
     for (const item of items) {
@@ -215,6 +227,8 @@ export const claimNextBatch = internalMutation({
         organizationId: item.organizationId,
         linkedInUrl: item.linkedInUrl,
         email: item.email,
+        class: item.class,
+        family: item.family,
         profileType: item.profileType,
       })
     }

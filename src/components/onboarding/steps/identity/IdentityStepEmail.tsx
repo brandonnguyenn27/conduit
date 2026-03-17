@@ -12,9 +12,9 @@ type IdentityStepEmailProps = {
 	savedEmail: string;
 	onDraftChange: (email: string) => void;
 	onResolved: (payload: {
-		profileId: Id<"profiles">;
+		profileId?: Id<"profiles">;
 		email: string;
-		name: string;
+		name?: string;
 	}) => void | Promise<void>;
 };
 
@@ -44,9 +44,9 @@ export function IdentityStepEmail({
 				});
 
 				if (!result.ok) {
-					setErrorMessage(
-						"No matching email address in our system. Please contact your organization admin.",
-					);
+					await onResolved({
+						email: normalizedEmail,
+					});
 					return;
 				}
 

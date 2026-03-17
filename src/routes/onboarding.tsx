@@ -194,25 +194,31 @@ function OnboardingRoute() {
 												email,
 												name,
 											}) => {
-												const issueCodeResult = await issueClaimCodeFn({
-													data: {
-														joinToken,
-														profileId: nextProfileId,
-													},
-												});
-												if (!issueCodeResult.ok) {
-													throw new Error("Failed to issue claim code");
+												if (nextProfileId) {
+													const issueCodeResult = await issueClaimCodeFn({
+														data: {
+															joinToken,
+															profileId: nextProfileId,
+														},
+													});
+													if (!issueCodeResult.ok) {
+														throw new Error("Failed to issue claim code");
+													}
+
+													setProfileId(nextProfileId);
+													setResolvedName(name ?? "");
+												} else {
+													setProfileId(null);
+													setResolvedName("");
 												}
 
-												setProfileId(nextProfileId);
 												setResolvedEmail(email);
-												setResolvedName(name);
 												goToStep(2);
 											}}
 										/>
 									) : null}
 
-									{stepIndex === 2 && profileId && !emailVerified ? (
+									{stepIndex === 2 && !emailVerified ? (
 										<Step3VerifyCode
 											profileId={profileId}
 											email={resolvedEmail}

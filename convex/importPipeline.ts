@@ -35,6 +35,8 @@ type ClaimedItem = {
   organizationId: Id<'organizations'>
   linkedInUrl: string
   email?: string
+  class?: string
+  family?: string
   profileType?: 'alumni' | 'member'
 }
 
@@ -69,6 +71,8 @@ export const processImportQueue = action({
         const profileForImport = {
           ...profile,
           ...(email ? { email } : {}),
+          ...(item.class ? { class: item.class } : {}),
+          ...(item.family ? { family: item.family } : {}),
           ...(item.profileType ? { profileType: item.profileType } : {}),
         }
         const normalized = await normalizeSearchArrays({

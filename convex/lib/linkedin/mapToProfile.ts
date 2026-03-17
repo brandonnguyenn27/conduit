@@ -49,6 +49,8 @@ export interface ProfileInsertPayload {
   jobTitlesSearchSlug?: string
   currentJobTitlesSearchSlug?: string
   pastJobTitlesSearchSlug?: string
+  class?: string
+  family?: string
   email?: string
 }
 

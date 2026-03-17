@@ -63,6 +63,7 @@ export default defineSchema({
     currentJobTitlesSearchSlug: v.optional(v.string()),
     pastJobTitlesSearchSlug: v.optional(v.string()),
     class: v.optional(v.string()),
+    family: v.optional(v.string()),
     profileType: v.optional(v.union(v.literal('alumni'), v.literal('member'))),
     claimedByUserId: v.optional(v.string()),
     email: v.optional(v.string()),
@@ -112,6 +113,8 @@ export default defineSchema({
     organizationId: v.id('organizations'),
     linkedInUrl: v.string(),
     email: v.optional(v.string()),
+    class: v.optional(v.string()),
+    family: v.optional(v.string()),
     profileType: v.optional(v.union(v.literal('alumni'), v.literal('member'))),
     status: v.union(
       v.literal('pending'),

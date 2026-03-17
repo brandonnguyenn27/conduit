@@ -30,6 +30,7 @@ export const profileInsertValidator = v.object({
   currentCompany: v.optional(v.string()),
   currentExperience: v.optional(experienceEntry),
   class: v.optional(v.string()),
+  family: v.optional(v.string()),
   profileType: v.optional(v.union(v.literal('alumni'), v.literal('member'))),
   claimedByUserId: v.optional(v.string()),
   email: v.optional(v.string()),
