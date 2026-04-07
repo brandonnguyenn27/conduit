@@ -178,6 +178,33 @@ export const resetStuckProcessing = mutation({
   },
 })
 
+/** Retry failed rows by resetting status to "pending" and scheduling the import pipeline. */
+export const retryFailed = mutation({
+  args: { organizationId: v.optional(v.id('organizations')) },
+  handler: async (ctx, args) => {
+    const failed = await ctx.db
+      .query('importQueue')
+      .withIndex('by_status', (q) => q.eq('status', 'failed'))
+      .collect()
+
+    const toRetry = args.organizationId
+      ? failed.filter((row) => row.organizationId === args.organizationId)
+      : failed
+
+    for (const row of toRetry) {
+      await ctx.db.patch(row._id, { status: 'pending', errorMessage: undefined })
+    }
+
+    if (toRetry.length > 0) {
+      await ctx.scheduler.runAfter(PIPELINE_INITIAL_RUN_AFTER_MS, api.importPipeline.processImportQueue, {
+        limit: PIPELINE_BATCH_SIZE,
+      })
+    }
+
+    return toRetry.length
+  },
+})
+
 /** Inserts test queue rows for e2e when PIPELINE_TEST_MODE=true. No API keys needed. */
 export const seedTestQueue = mutation({
   args: {

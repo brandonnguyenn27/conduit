@@ -1,5 +1,4 @@
 export type { LinkedInProfileProvider, RawLinkedInProfile } from './types'
-export { getLinkedInProvider } from './provider'
 export { mapToProfile } from './mapToProfile'
 export type { ProfileInsertPayload } from './mapToProfile'
 export { normalizeSearchArrays } from './normalize'

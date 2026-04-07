@@ -4,7 +4,9 @@ import type { Id } from './_generated/dataModel'
 import { action } from './_generated/server'
 import { api, internal } from './_generated/api'
 import { v } from 'convex/values'
-import { getLinkedInProvider, mapToProfile } from './lib/linkedin'
+import { mapToProfile } from './lib/linkedin/mapToProfile'
+import { getLinkedInProvider } from './lib/linkedin/provider'
+import type { RawLinkedInProfile } from './lib/linkedin/types'
 import { normalizeSearchArrays } from './lib/linkedin/normalize'
 import {
   toCompaniesSearchSlugFromExperience,
@@ -57,20 +59,21 @@ export const processImportQueue = action({
     const provider = getLinkedInProvider()
     let done = 0
     let failed = 0
-    
-    for (const item of batch) {
-      const username = usernameFromUrl(item.linkedInUrl)
-      if (!username) {
-        await ctx.runMutation(api.functions.importQueue.mutations.updateStatus, {
-          id: item.id,
-          status: 'failed',
-          errorMessage: 'Invalid LinkedIn URL',
-        })
-        failed++
-        continue
-      }
+
+    const markFailed = async (item: ClaimedItem, errorMessage: string): Promise<void> => {
+      await ctx.runMutation(api.functions.importQueue.mutations.updateStatus, {
+        id: item.id,
+        status: 'failed',
+        errorMessage,
+      })
+      failed++
+    }
+
+    const processImportedProfile = async (
+      item: ClaimedItem,
+      raw: RawLinkedInProfile
+    ): Promise<void> => {
       try {
-        const raw = await provider.fetchFullProfile(username)
         const profile = mapToProfile(raw, item.organizationId)
         const email = normalizeEmail(item.email)
         const importClass = normalizeOptionalHeaderField(item.class)
@@ -131,12 +134,62 @@ export const processImportQueue = action({
         done++
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e)
-        await ctx.runMutation(api.functions.importQueue.mutations.updateStatus, {
-          id: item.id,
-          status: 'failed',
-          errorMessage: message,
-        })
-        failed++
+        await markFailed(item, message)
+      }
+    }
+
+    if (provider.fetchFullProfilesByUrls) {
+      const validItems: Array<{ item: ClaimedItem; linkedInUrl: string }> = []
+      for (const item of batch) {
+        const linkedInUrl = item.linkedInUrl.trim()
+        if (!usernameFromUrl(linkedInUrl)) {
+          await markFailed(item, 'Invalid LinkedIn URL')
+          continue
+        }
+        validItems.push({ item, linkedInUrl })
+      }
+
+      if (validItems.length > 0) {
+        let rawByLinkedInUrl: Map<string, RawLinkedInProfile> | null = null
+        try {
+          rawByLinkedInUrl = await provider.fetchFullProfilesByUrls(
+            validItems.map((entry) => entry.linkedInUrl)
+          )
+        } catch (e) {
+          const message = e instanceof Error ? e.message : String(e)
+          for (const entry of validItems) {
+            await markFailed(entry.item, message)
+          }
+        }
+
+        if (rawByLinkedInUrl) {
+          for (const entry of validItems) {
+            const raw = rawByLinkedInUrl.get(entry.linkedInUrl)
+            if (!raw) {
+              await markFailed(
+                entry.item,
+                `Profile not returned by provider for LinkedIn URL: ${entry.linkedInUrl}`
+              )
+              continue
+            }
+            await processImportedProfile(entry.item, raw)
+          }
+        }
+      }
+    } else {
+      for (const item of batch) {
+        const username = usernameFromUrl(item.linkedInUrl)
+        if (!username) {
+          await markFailed(item, 'Invalid LinkedIn URL')
+          continue
+        }
+        try {
+          const raw = await provider.fetchFullProfile(username)
+          await processImportedProfile(item, raw)
+        } catch (e) {
+          const message = e instanceof Error ? e.message : String(e)
+          await markFailed(item, message)
+        }
       }
     }
     if (batch.length === limit) {

@@ -43,4 +43,5 @@ export interface RawLinkedInProfile {
 
 export interface LinkedInProfileProvider {
   fetchFullProfile(usernameOrUrn: string): Promise<RawLinkedInProfile>
+  fetchFullProfilesByUrls?: (linkedInUrls: string[]) => Promise<Map<string, RawLinkedInProfile>>
 }

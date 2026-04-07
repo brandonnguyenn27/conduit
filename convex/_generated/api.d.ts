@@ -36,6 +36,7 @@ import type * as functions_savedProfiles_queries from "../functions/savedProfile
 import type * as http from "../http.js";
 import type * as importPipeline from "../importPipeline.js";
 import type * as lib_importPipelineConfig from "../lib/importPipelineConfig.js";
+import type * as lib_linkedin_apify from "../lib/linkedin/apify.js";
 import type * as lib_linkedin_index from "../lib/linkedin/index.js";
 import type * as lib_linkedin_linkdapi from "../lib/linkedin/linkdapi.js";
 import type * as lib_linkedin_mapToProfile from "../lib/linkedin/mapToProfile.js";
@@ -86,6 +87,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   importPipeline: typeof importPipeline;
   "lib/importPipelineConfig": typeof lib_importPipelineConfig;
+  "lib/linkedin/apify": typeof lib_linkedin_apify;
   "lib/linkedin/index": typeof lib_linkedin_index;
   "lib/linkedin/linkdapi": typeof lib_linkedin_linkdapi;
   "lib/linkedin/mapToProfile": typeof lib_linkedin_mapToProfile;
