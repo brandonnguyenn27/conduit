@@ -1,8 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useMutation, useQuery } from 'convex/react'
+import { useMutation } from 'convex/react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Star } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
 import { api } from '@convex/_generated/api'
@@ -12,6 +12,8 @@ import { cn } from '@/lib/utils'
 interface SaveProfileButtonProps {
   profileId: Id<'profiles'>
   organizationId: Id<'organizations'>
+  saved: boolean
+  loading?: boolean
   className?: string
   iconClassName?: string
 }
@@ -19,21 +21,26 @@ interface SaveProfileButtonProps {
 export function SaveProfileButton({
   profileId,
   organizationId,
+  saved,
+  loading = false,
   className,
   iconClassName,
 }: SaveProfileButtonProps) {
-  const isSaved = useQuery(api.functions.savedProfiles.queries.isSaved, {
-    profileId,
-  })
-
   const [optimisticSaved, setOptimisticSaved] = useState<boolean | null>(null)
+  const [isMutating, setIsMutating] = useState(false)
 
   const addMutation = useMutation(api.functions.savedProfiles.mutations.add)
   const removeMutation = useMutation(api.functions.savedProfiles.mutations.remove)
   const queryClient = useQueryClient()
 
-  const effectivelySaved = optimisticSaved !== null ? optimisticSaved : isSaved
-  const isLoading = isSaved === undefined
+  const effectivelySaved = optimisticSaved !== null ? optimisticSaved : saved
+  const isLoading = loading || isMutating
+
+  useEffect(() => {
+    if (optimisticSaved !== null && optimisticSaved === saved) {
+      setOptimisticSaved(null)
+    }
+  }, [optimisticSaved, saved])
 
   async function handleToggle(e: React.MouseEvent) {
     e.preventDefault()
@@ -43,29 +50,24 @@ export function SaveProfileButton({
 
     const nextState = !effectivelySaved
     setOptimisticSaved(nextState)
+    setIsMutating(true)
 
     try {
       if (nextState) {
         await addMutation({ profileId, organizationId })
         toast.success('Profile saved')
       } else {
-        // Optimistically remove from any saved-profiles cache to prevent double-layered UI changes
-        queryClient.setQueriesData({ queryKey: ['saved-profiles'] }, (oldData: any) => {
-          if (!Array.isArray(oldData)) return oldData
-          return oldData.filter((p) => p._id !== profileId)
-        })
-
         await removeMutation({ profileId })
         toast.success('Profile removed from saved')
       }
       
-      // Invalidate TanStack query cache so saved.tsx route knows it's stale
       queryClient.invalidateQueries({ queryKey: ['saved-profiles'] })
     } catch (error) {
-      // Revert optimistic state on failure
       setOptimisticSaved(null)
       toast.error('Failed to update saved status')
       console.error(error)
+    } finally {
+      setIsMutating(false)
     }
   }
 

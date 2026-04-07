@@ -10,6 +10,8 @@ import {
 } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
 import { useOrganization } from '@/contexts/OrganizationContext'
+import type { Id } from '@convex/_generated/dataModel'
+import { useSavedProfileIds } from '@/hooks/use-saved-profile-ids'
 
 type SearchProfile = {
   _id: string
@@ -39,6 +41,9 @@ export function SearchResultsTable({
   onProfileClick,
 }: SearchResultsTableProps) {
   const organizationId = useOrganization()
+  const { savedProfileIdSet, isLoading: isSavedProfilesLoading } = useSavedProfileIds(
+    organizationId
+  )
   const showEmptyState = !isLoading && profiles.length === 0
 
   return (
@@ -69,43 +74,48 @@ export function SearchResultsTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {profiles.map((profile) => (
-              <TableRow
-                key={profile._id}
-                onClick={() => onProfileClick?.(profile._id)}
-                className={cn(
-                  'group',
-                  onProfileClick ? 'cursor-pointer' : 'cursor-default'
-                )}
-              >
-                <TableCell className="py-4 font-medium">{profile.name}</TableCell>
-                <TableCell className="text-muted-foreground py-4">{profile.headline}</TableCell>
-                <TableCell className="py-4">{profile.currentCompany ?? '—'}</TableCell>
-                <TableCell className="py-4">
-                  <div className="flex items-center justify-end gap-2">
-                    {organizationId ? (
-                      <SaveProfileButton
-                        profileId={profile._id as any}
-                        organizationId={organizationId}
-                        className="h-9 w-9"
-                      />
-                    ) : null}
-                    <a
-                      href={profile.linkedInUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={`Open ${profile.name} on LinkedIn`}
-                      onClick={(event) => {
-                        event.stopPropagation()
-                      }}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border/70 hover:bg-muted"
-                    >
-                      <LinkedInIcon />
-                    </a>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+            {profiles.map((profile) => {
+              const profileId = profile._id as Id<'profiles'>
+              return (
+                <TableRow
+                  key={profile._id}
+                  onClick={() => onProfileClick?.(profile._id)}
+                  className={cn(
+                    'group',
+                    onProfileClick ? 'cursor-pointer' : 'cursor-default'
+                  )}
+                >
+                  <TableCell className="py-4 font-medium">{profile.name}</TableCell>
+                  <TableCell className="text-muted-foreground py-4">{profile.headline}</TableCell>
+                  <TableCell className="py-4">{profile.currentCompany ?? '—'}</TableCell>
+                  <TableCell className="py-4">
+                    <div className="flex items-center justify-end gap-2">
+                      {organizationId ? (
+                        <SaveProfileButton
+                          profileId={profileId}
+                          organizationId={organizationId}
+                          saved={savedProfileIdSet.has(profileId)}
+                          loading={isSavedProfilesLoading}
+                          className="h-9 w-9"
+                        />
+                      ) : null}
+                      <a
+                        href={profile.linkedInUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`Open ${profile.name} on LinkedIn`}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                        }}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border/70 hover:bg-muted"
+                      >
+                        <LinkedInIcon />
+                      </a>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )
+            })}
           </TableBody>
         </Table>
 

@@ -21,6 +21,7 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { useOrganization } from "@/contexts/OrganizationContext";
+import { useSavedProfileIds } from "@/hooks/use-saved-profile-ids";
 import { cn } from "@/lib/utils";
 import { SaveProfileButton } from "./SaveProfileButton";
 
@@ -167,6 +168,8 @@ export function ProfileTable({
 	onPageSelect,
 }: ProfileTableProps) {
 	const organizationId = useOrganization();
+	const { savedProfileIdSet, isLoading: isSavedProfilesLoading } =
+		useSavedProfileIds(organizationId);
 	const showEmptyState = !isLoading && profiles.length === 0;
 	const resultsSummary = formatResultsSummary(
 		currentPage,
@@ -251,6 +254,7 @@ export function ProfileTable({
 								</TableHeader>
 								<TableBody>
 									{profiles.map((profile) => {
+										const profileId = profile._id as Id<"profiles">;
 										const nameDisplay = truncateDisplay(profile.name, NAME_MAX);
 										const headlineDisplay = truncateDisplay(
 											profile.headline,
@@ -292,8 +296,10 @@ export function ProfileTable({
 													<div className="flex items-center justify-end gap-2">
 														{organizationId ? (
 															<SaveProfileButton
-																profileId={profile._id as Id<"profiles">}
+																profileId={profileId}
 																organizationId={organizationId}
+																saved={savedProfileIdSet.has(profileId)}
+																loading={isSavedProfilesLoading}
 																className="h-9 w-9"
 															/>
 														) : null}

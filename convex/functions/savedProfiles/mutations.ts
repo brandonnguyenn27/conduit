@@ -15,10 +15,12 @@ export const add = mutation({
 
     const existing = await ctx.db
       .query('savedProfiles')
-      .withIndex('by_user_org', (q) =>
-        q.eq('userId', user._id).eq('organizationId', args.organizationId)
+      .withIndex('by_user_org_profile', (q) =>
+        q
+          .eq('userId', user._id)
+          .eq('organizationId', args.organizationId)
+          .eq('profileId', args.profileId)
       )
-      .filter((q) => q.eq(q.field('profileId'), args.profileId))
       .first()
       
     if (existing) return existing._id
@@ -44,8 +46,9 @@ export const remove = mutation({
 
     const saved = await ctx.db
       .query('savedProfiles')
-      .withIndex('by_profile', (q) => q.eq('profileId', args.profileId))
-      .filter((q) => q.eq(q.field('userId'), user._id))
+      .withIndex('by_user_profile', (q) =>
+        q.eq('userId', user._id).eq('profileId', args.profileId)
+      )
       .first()
       
     if (saved) await ctx.db.delete(saved._id)

@@ -189,5 +189,7 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index('by_user_org', ['userId', 'organizationId'])
+    .index('by_user_profile', ['userId', 'profileId'])
+    .index('by_user_org_profile', ['userId', 'organizationId', 'profileId'])
     .index('by_profile', ['profileId']),
 })

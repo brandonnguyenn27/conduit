@@ -11,6 +11,7 @@ import {
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useOrganization } from '@/contexts/OrganizationContext'
+import { useSavedProfileIds } from '@/hooks/use-saved-profile-ids'
 import { groupExperiencesByCompany } from '@/lib/experience'
 
 type DatePart = {
@@ -61,6 +62,9 @@ export function ProfileDetailDrawer({
   isLoading,
 }: ProfileDetailDrawerProps) {
   const organizationId = useOrganization()
+  const { savedProfileIdSet, isLoading: isSavedProfilesLoading } = useSavedProfileIds(
+    organizationId
+  )
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange} direction="right">
@@ -83,6 +87,8 @@ export function ProfileDetailDrawer({
                   <SaveProfileButton
                     profileId={profile._id}
                     organizationId={organizationId}
+                    saved={savedProfileIdSet.has(profile._id)}
+                    loading={isSavedProfilesLoading}
                     className="h-11 w-11"
                     iconClassName="h-5 w-5"
                   />

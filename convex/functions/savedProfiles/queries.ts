@@ -67,16 +67,40 @@ export const isSaved = query({
   args: {
     profileId: v.id('profiles'),
   },
+  returns: v.boolean(),
   handler: async (ctx, args) => {
     const user = await authComponent.safeGetAuthUser(ctx)
     if (!user) return false
     
     const saved = await ctx.db
       .query('savedProfiles')
-      .withIndex('by_profile', (q) => q.eq('profileId', args.profileId))
-      .filter((q) => q.eq(q.field('userId'), user._id))
+      .withIndex('by_user_profile', (q) =>
+        q.eq('userId', user._id).eq('profileId', args.profileId)
+      )
       .first()
       
     return saved !== null
+  },
+})
+
+export const listSavedProfileIdsByUserAndOrg = query({
+  args: {
+    organizationId: v.id('organizations'),
+  },
+  returns: v.array(v.id('profiles')),
+  handler: async (ctx, args) => {
+    const user = await authComponent.safeGetAuthUser(ctx)
+    if (!user) {
+      throw new Error('Unauthorized')
+    }
+
+    const savedProfiles = await ctx.db
+      .query('savedProfiles')
+      .withIndex('by_user_org', (q) =>
+        q.eq('userId', user._id).eq('organizationId', args.organizationId)
+      )
+      .collect()
+
+    return savedProfiles.map((saved) => saved.profileId)
   },
 })
