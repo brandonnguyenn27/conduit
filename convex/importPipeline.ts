@@ -9,6 +9,10 @@ import { getLinkedInProvider } from './lib/linkedin/provider'
 import type { RawLinkedInProfile } from './lib/linkedin/types'
 import { normalizeSearchArrays } from './lib/linkedin/normalize'
 import {
+  canonicalizeJobTitleTokens,
+  canonicalizeMajorTokens,
+} from './lib/linkedin/canonicalizeFacets'
+import {
   toCompaniesSearchSlugFromExperience,
   toCurrentCompanySlugFromExperience,
   toCurrentJobTitlesSearchSlugFromExperience,
@@ -95,6 +99,8 @@ export const processImportQueue = action({
           profileForImport.companies = normalized.companies
           profileForImport.jobTitles = normalized.jobTitles
         }
+        profileForImport.majors = canonicalizeMajorTokens(profileForImport.majors)
+        profileForImport.jobTitles = canonicalizeJobTitleTokens(profileForImport.jobTitles)
         profileForImport.suggestSearchText = toSuggestSearchText({
           name: profileForImport.name,
           headline: profileForImport.headline,

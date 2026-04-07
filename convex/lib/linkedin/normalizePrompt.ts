@@ -7,6 +7,11 @@ Rules:
 - Fix spelling errors and typos (e.g. "huamn resources management" -> "Human Resource Management", "Compter Science" -> "Computer Science").
 - Standardize to title case for majors, schools, and companies.
 - Normalize education degree strings when they appear: "Bachelor's of Science", "Bachelor of Science", "BS", and "B.S" -> "B.S.".
+- If you normalize an item, output only the canonical value and do not include the original variant.
+- Do not return overly-specific composite majors (e.g. "Business Administration: Management Information Systems") when a canonical major exists (e.g. "Management Information Systems").
+- For business majors with concentrations/focuses, output the focus domain as the major (e.g. "Business Administration with Finance Concentration" -> "Finance").
+- Keep "Finance & Accounting" as its own major bucket when both are explicit.
+- Keep "Management Information Systems" as-is; map "MIS" and "Information Systems" to "Management Information Systems".
 - Drop empty or placeholder values.
 
 Reply with exactly one JSON object, no markdown or explanation, with keys: majors (array of strings), schools, companies, jobTitles.`

@@ -1,4 +1,8 @@
 import { deriveCurrentExperienceFromStored } from '../../lib/profiles/deriveCurrentExperience'
+import {
+  canonicalizeJobTitleTokens,
+  canonicalizeMajorTokens,
+} from '../../lib/linkedin/canonicalizeFacets'
 import { splitJobTitlesByTenure } from '../profiles/helpers'
 
 export type FacetKey =
@@ -21,6 +25,9 @@ export const ALL_FACET_KEYS: FacetKey[] = [
   'classes',
   'families',
 ]
+
+const MAX_GENERIC_FACET_TOKEN_LENGTH = 120
+const MAX_MAJOR_TOKEN_LENGTH = 80
 
 export function canonicalizeKey(value: string): string {
   return value.trim().toLowerCase()
@@ -70,15 +77,34 @@ export function extractFacetTokens(profile: ProfileLike): Record<FacetKey, strin
   const families = profile.family?.trim() ? dedupeTokens([profile.family]) : []
 
   return {
-    companies: dedupeTokens(companies),
-    currentCompanies: dedupeTokens(currentCompanies),
-    majors: dedupeTokens(profile.majors),
-    schools: dedupeTokens(profile.schools),
-    currentRoles: dedupeTokens(roleTenure.current),
-    pastRoles: dedupeTokens(roleTenure.past),
+    companies: sanitizeFacetTokens('companies', companies),
+    currentCompanies: sanitizeFacetTokens('currentCompanies', currentCompanies),
+    majors: sanitizeFacetTokens('majors', canonicalizeMajorTokens(profile.majors)),
+    schools: sanitizeFacetTokens('schools', profile.schools),
+    currentRoles: sanitizeFacetTokens('currentRoles', canonicalizeJobTitleTokens(roleTenure.current)),
+    pastRoles: sanitizeFacetTokens('pastRoles', canonicalizeJobTitleTokens(roleTenure.past)),
     classes,
     families,
   }
+}
+
+function sanitizeFacetTokens(facet: FacetKey, values: string[]): string[] {
+  const filtered: string[] = []
+  for (const value of values) {
+    const trimmed = value.trim()
+    if (!trimmed) continue
+    if (trimmed.length > MAX_GENERIC_FACET_TOKEN_LENGTH) continue
+    if (facet === 'majors' && shouldDropMajorToken(trimmed)) continue
+    filtered.push(trimmed)
+  }
+  return dedupeTokens(filtered)
+}
+
+function shouldDropMajorToken(value: string): boolean {
+  if (value.length > MAX_MAJOR_TOKEN_LENGTH) return true
+  if (value.includes(':') || value.includes('|')) return true
+  const commas = value.match(/,/g)?.length ?? 0
+  return commas > 2
 }
 
 function dedupeTokens(values: string[]): string[] {

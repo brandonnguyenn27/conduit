@@ -1,8 +1,12 @@
 import type { Id } from '../../_generated/dataModel'
-import { mutation } from '../../_generated/server'
+import { internalMutation, mutation } from '../../_generated/server'
 import { internal } from '../../_generated/api'
 import { v } from 'convex/values'
 import { deriveCurrentExperienceFromStored } from '../../lib/profiles/deriveCurrentExperience'
+import {
+  canonicalizeJobTitleTokens,
+  canonicalizeMajorTokens,
+} from '../../lib/linkedin/canonicalizeFacets'
 import { educationEntry, experienceEntry } from '../../lib/validators'
 import {
   profileInsertValidator,
@@ -415,6 +419,85 @@ export const backfillJobTitleSlugs = mutation({
       updated++
     }
     return { scanned: docs.length, updated }
+  },
+})
+
+function dedupeTrimmed(values: string[]): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const value of values) {
+    const trimmed = value.trim()
+    if (!trimmed) continue
+    const key = trimmed.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(trimmed)
+  }
+  return out
+}
+
+export const backfillNormalizedFacetArrays = internalMutation({
+  args: {
+    organizationId: v.id('organizations'),
+    batchSize: v.optional(v.number()),
+    cursor: v.optional(v.string()),
+    dryRun: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const batchSize = Math.max(1, Math.min(args.batchSize ?? 50, 200))
+    const result = await ctx.db
+      .query('profiles')
+      .withIndex('by_organization_linkedin', (q) =>
+        q.eq('organizationId', args.organizationId)
+      )
+      .paginate({ cursor: args.cursor ?? null, numItems: batchSize })
+    let updated = 0
+    for (const profile of result.page) {
+      const nextMajors = canonicalizeMajorTokens(profile.majors)
+      const nextJobTitles = canonicalizeJobTitleTokens(profile.jobTitles)
+      const nextSchools = dedupeTrimmed(profile.schools)
+      const nextCompanies = dedupeTrimmed(profile.companies)
+
+      const changed =
+        JSON.stringify(nextMajors) !== JSON.stringify(profile.majors) ||
+        JSON.stringify(nextJobTitles) !== JSON.stringify(profile.jobTitles) ||
+        JSON.stringify(nextSchools) !== JSON.stringify(profile.schools) ||
+        JSON.stringify(nextCompanies) !== JSON.stringify(profile.companies)
+
+      if (!changed) continue
+
+      if (!args.dryRun) {
+        await ctx.db.patch(profile._id, {
+          majors: nextMajors,
+          jobTitles: nextJobTitles,
+          schools: nextSchools,
+          companies: nextCompanies,
+          suggestSearchText: toSuggestSearchText({
+            name: profile.name,
+            headline: profile.headline,
+            summary: profile.summary,
+            skills: profile.skills,
+            majors: nextMajors,
+            schools: nextSchools,
+            companies: nextCompanies,
+            jobTitles: nextJobTitles,
+            class: profile.class,
+            family: profile.family,
+          }),
+          educationSearchSlug: toEducationSearchSlug(nextSchools, nextMajors),
+          jobTitlesSearchSlug: toJobTitlesSearchSlug(nextJobTitles),
+        })
+      }
+      updated++
+    }
+
+    return {
+      scanned: result.page.length,
+      updated,
+      dryRun: !!args.dryRun,
+      isDone: result.isDone,
+      nextCursor: result.isDone ? null : result.continueCursor,
+    }
   },
 })
 

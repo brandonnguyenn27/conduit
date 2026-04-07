@@ -152,6 +152,25 @@ export default defineSchema({
       filterFields: ['organizationId', 'facet'],
     }),
 
+  facetBackfillJobs: defineTable({
+    organizationId: v.id('organizations'),
+    clearExisting: v.boolean(),
+    phase: v.union(v.literal('clearing'), v.literal('counting'), v.literal('done')),
+    batchSize: v.number(),
+    clearCursor: v.optional(v.string()),
+    profileCursor: v.optional(v.string()),
+    processedProfiles: v.number(),
+    deleted: v.number(),
+    inserted: v.number(),
+    updated: v.number(),
+    done: v.boolean(),
+    error: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_organization_done', ['organizationId', 'done'])
+    .index('by_organization_updated', ['organizationId', 'updatedAt']),
+
   appUsers: defineTable({
     betterAuthUserId: v.string(),
     organizationId: v.id('organizations'),
