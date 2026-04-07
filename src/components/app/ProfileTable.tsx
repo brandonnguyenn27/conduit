@@ -135,6 +135,8 @@ interface ProfileTableProps {
 	emptyMessage: string;
 	/** Must match server page size (Convex numItems). */
 	pageSize?: number;
+	/** When true, pads empty rows to keep table height fixed at pageSize. */
+	padToPageSize?: boolean;
 	/** Exact total when known (e.g. from a count query); otherwise derived on last page only. */
 	totalResults?: number;
 	onRefresh?: () => void;
@@ -155,6 +157,7 @@ export function ProfileTable({
 	isLoading,
 	emptyMessage,
 	pageSize = 10,
+	padToPageSize = true,
 	totalResults,
 	onRefresh,
 	isRefreshing,
@@ -196,7 +199,7 @@ export function ProfileTable({
 		}
 	}, [currentPage]);
 
-	const paddingRows = Math.max(0, pageSize - profiles.length);
+	const paddingRows = padToPageSize ? Math.max(0, pageSize - profiles.length) : 0;
 
 	return (
 		<Card className="rounded-lg border-border/70 bg-white/70 backdrop-blur-md dark:bg-zinc-900/70">

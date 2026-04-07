@@ -27,23 +27,27 @@ export const searchProfilesForViewerFn = createServerFn({ method: 'POST' })
       searchQuery: string
       slot2: Slot2Value
       searchKey: number
-      limit: number
+      cursor?: string | null
+      numItems?: number
     }) => payload
   )
   .handler(async ({ data }) => {
+    const cursor = data.cursor ?? null
+    const numItems = data.numItems ?? 10
     const result = await fetchAuthQuery(api.functions.profiles.queries.searchProfilesPaginated, {
       organizationId: data.organizationId,
       searchQuery: data.searchQuery,
       slot2: data.slot2,
       searchKey: data.searchKey,
       paginationOpts: {
-        cursor: null,
-        numItems: data.limit,
+        cursor,
+        numItems,
       },
     })
 
     return {
       page: result.page,
       isDone: result.isDone,
+      continueCursor: result.continueCursor,
     }
   })

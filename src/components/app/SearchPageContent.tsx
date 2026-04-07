@@ -1,7 +1,7 @@
-import { useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { useServerFn } from '@tanstack/react-start'
 import { motion } from 'framer-motion'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import { ChatQueryInterface } from '@/components/app/ChatQueryInterface'
 import { ProfileDetailDrawer } from '@/components/app/ProfileDetailDrawer'
@@ -22,7 +22,6 @@ export function SearchPageContent() {
   const searchProfilesForViewer = useServerFn(searchProfilesForViewerFn)
   const [searchParams, setSearchParams] = useState<SearchParams>(null)
   const [searchKey, setSearchKey] = useState(0)
-  const [searchLimit, setSearchLimit] = useState(10)
   const [selectedProfileId, setSelectedProfileId] = useState<Id<'profiles'> | null>(null)
   const hasSearched = !!searchParams
 
@@ -32,37 +31,44 @@ export function SearchPageContent() {
     data: searchResults,
     isPending: isInitialSearchLoading,
     isFetching: isRefreshing,
-  } = useQuery({
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
     queryKey: [
       'search-profiles',
       organizationId,
       searchParams?.slot2 ?? null,
       searchParams?.slot3 ?? null,
-      ...(searchParams ? [searchKey, searchLimit] : []),
+      ...(searchParams ? [searchKey] : []),
     ],
     enabled: shouldRunSearch,
-    queryFn: async () =>
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => (lastPage.isDone ? undefined : lastPage.continueCursor),
+    queryFn: async ({ pageParam }) =>
       await searchProfilesForViewer({
         data: {
           organizationId: organizationId!,
           searchQuery: searchParams!.slot3,
           slot2: searchParams!.slot2,
           searchKey,
-          limit: searchLimit,
+          cursor: pageParam,
+          numItems: 10,
         },
       }),
   })
 
-  const mainProfiles = searchResults?.page ?? []
+  const mainProfiles = useMemo(
+    () => (searchResults?.pages ?? []).flatMap((p) => p.page),
+    [searchResults]
+  )
   const isRoleQuery =
     searchParams?.slot2 === 'works_as' || searchParams?.slot2 === 'worked_as'
-  const disableLoadMore =
-    isRefreshing || !searchResults || searchResults.isDone
+  const hasMoreServer = !!hasNextPage
 
   function handleSearch(slot2: Slot2Value, slot3: string) {
     const normalized = normalizeSearchValue(slot2, slot3)
     if (!normalized) return
-    setSearchLimit(10)
     setSelectedProfileId(null)
     setSearchKey(Date.now())
     setSearchParams({ slot2, slot3: normalized })
@@ -70,11 +76,6 @@ export function SearchPageContent() {
 
   function handleRefresh() {
     setSearchKey(Date.now())
-  }
-
-  function handleNextPage() {
-    if (disableLoadMore) return
-    setSearchLimit((current) => current + 10)
   }
 
   return (
@@ -106,10 +107,13 @@ export function SearchPageContent() {
             <SearchResultsContent
               profiles={mainProfiles}
               isRoleQuery={isRoleQuery}
-              isRefreshing={isRefreshing}
-              disableLoadMore={disableLoadMore}
+              isRefreshing={isRefreshing || isFetchingNextPage}
+              hasMoreServer={hasMoreServer}
               onRefresh={handleRefresh}
-              onLoadMore={handleNextPage}
+              onLoadMore={() => {
+                if (!hasNextPage || isFetchingNextPage) return
+                fetchNextPage()
+              }}
               onProfileClick={(profileId) =>
                 setSelectedProfileId(profileId as Id<'profiles'>)
               }
