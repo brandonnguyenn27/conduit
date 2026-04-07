@@ -45,6 +45,8 @@ type SuggestSearchInput = {
   schools: string[]
   companies: string[]
   jobTitles: string[]
+  class?: string
+  family?: string
 }
 
 export function toSuggestSearchText(input: SuggestSearchInput): string {
@@ -57,6 +59,8 @@ export function toSuggestSearchText(input: SuggestSearchInput): string {
     ...input.schools,
     ...input.companies,
     ...input.jobTitles,
+    input.class,
+    input.family,
   ].filter((term): term is string => typeof term === 'string')
   const seen = new Set<string>()
   const normalized: string[] = []

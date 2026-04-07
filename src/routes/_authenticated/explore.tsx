@@ -5,7 +5,7 @@ import { useState, useTransition } from 'react'
 
 import { ExplorePageSkeleton } from '@/components/app/ExplorePageSkeleton'
 import { ProfileDetailDrawer } from '@/components/app/ProfileDetailDrawer'
-import { SavedProfilesTable } from '@/components/app/SavedProfilesTable'
+import { ProfileTable } from '@/components/app/ProfileTable'
 import { SelectedProfileDetailDrawer } from '@/components/home/search/SelectedProfileDetailDrawer'
 import { AuroraText } from '@/components/ui/aurora-text'
 import { DotPattern } from '@/components/ui/dot-pattern'
@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/select'
 import type { Id } from '@convex/_generated/dataModel'
 import { useOrganization } from '@/contexts/OrganizationContext'
+import { FRATERNITY_CLASS_LABELS, FRATERNITY_FAMILY_LABELS } from '@/lib/fraternityCatalog'
 import { getExploreProfilesFn } from '@/lib/explore.functions'
 import { getOrganizationDataFn } from '@/lib/get-organization-data.functions'
 import { cn } from '@/lib/utils'
@@ -27,6 +28,7 @@ type ExploreFilters = {
   major?: string
   profileType?: 'alumni' | 'member'
   class?: string
+  family?: string
 }
 
 export const Route = createFileRoute('/_authenticated/explore')({
@@ -176,6 +178,28 @@ function ExplorePage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={ALL_VALUE}>All Classes</SelectItem>
+                {FRATERNITY_CLASS_LABELS.map((label) => (
+                  <SelectItem key={label} value={label}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={filters.family ?? ALL_VALUE}
+              onValueChange={(v) => handleFilterChange('family', v)}
+            >
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Family" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_VALUE}>All Families</SelectItem>
+                {FRATERNITY_FAMILY_LABELS.map((label) => (
+                  <SelectItem key={label} value={label}>
+                    {label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
@@ -220,7 +244,7 @@ function ExplorePage() {
             )}
           </div>
 
-          <SavedProfilesTable
+          <ProfileTable
             title="All Profiles"
             profiles={paginatedProfiles?.page ?? []}
             isLoading={false}
@@ -265,5 +289,11 @@ function ExplorePage() {
 
 
 function hasActiveFilters(filters: ExploreFilters): boolean {
-  return !!(filters.industry || filters.major || filters.profileType || filters.class)
+  return !!(
+    filters.industry ||
+    filters.major ||
+    filters.profileType ||
+    filters.class ||
+    filters.family
+  )
 }

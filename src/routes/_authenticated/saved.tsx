@@ -4,7 +4,7 @@ import { useServerFn } from '@tanstack/react-start'
 import { useState, useTransition } from 'react'
 
 import { ProfileDetailDrawer } from '@/components/app/ProfileDetailDrawer'
-import { SavedProfilesTable } from '@/components/app/SavedProfilesTable'
+import { ProfileTable } from '@/components/app/ProfileTable'
 import { SelectedProfileDetailDrawer } from '@/components/home/search/SelectedProfileDetailDrawer'
 import { AuroraText } from '@/components/ui/aurora-text'
 import { DotPattern } from '@/components/ui/dot-pattern'
@@ -143,7 +143,7 @@ function SavedPage() {
         </h1>
 
         <div className="w-full max-w-6xl px-4 sm:px-6 lg:px-8">
-          <SavedProfilesTable
+          <ProfileTable
             title="Your Favorites"
             profiles={paginatedProfiles?.page ?? []}
             isLoading={false}

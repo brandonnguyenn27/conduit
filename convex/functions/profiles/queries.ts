@@ -288,6 +288,7 @@ export const listPaginatedForExplore = query({
         major: v.optional(v.string()),
         profileType: v.optional(v.union(v.literal('alumni'), v.literal('member'))),
         class: v.optional(v.string()),
+        family: v.optional(v.string()),
       })
     ),
   },
@@ -335,6 +336,10 @@ export const listPaginatedForExplore = query({
         return false
       }
 
+      if (filters?.family && profile.family !== filters.family) {
+        return false
+      }
+
       return true
     })
 
@@ -350,6 +355,7 @@ export const listPaginatedForExplore = query({
         major: profile.majors[0],
         profileType: profile.profileType,
         class: profile.class,
+        family: profile.family,
       })),
     }
   },

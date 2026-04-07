@@ -136,7 +136,9 @@ export default defineSchema({
       v.literal('majors'),
       v.literal('schools'),
       v.literal('currentRoles'),
-      v.literal('pastRoles')
+      v.literal('pastRoles'),
+      v.literal('classes'),
+      v.literal('families')
     ),
     valueKey: v.string(),
     displayValue: v.string(),

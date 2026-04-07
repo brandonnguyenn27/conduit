@@ -23,6 +23,8 @@ const EMPTY_TOKENS = {
   schools: [] as string[],
   currentRoles: [] as string[],
   pastRoles: [] as string[],
+  classes: [] as string[],
+  families: [] as string[],
 }
 
 export const create = mutation({
@@ -39,6 +41,8 @@ export const create = mutation({
         schools: args.schools,
         companies: args.companies,
         jobTitles: args.jobTitles,
+        class: args.class,
+        family: args.family,
       }),
       companiesSearchSlug: toCompaniesSearchSlugFromExperience(args.experience),
       currentCompanySlug: toCurrentCompanySlugFromExperience(args.experience),
@@ -102,6 +106,8 @@ export const update = mutation({
       schools: merged.schools,
       companies: merged.companies,
       jobTitles: merged.jobTitles,
+      class: merged.class,
+      family: merged.family,
     })
     const patchDoc: Record<string, unknown> = {
       ...filtered,
@@ -174,6 +180,8 @@ export const upsertFromImport = mutation({
         schools: args.profile.schools,
         companies: args.profile.companies,
         jobTitles: args.profile.jobTitles,
+        class: args.profile.class,
+        family: args.profile.family,
       }),
       companiesSearchSlug: toCompaniesSearchSlugFromExperience(args.profile.experience),
       currentCompanySlug: toCurrentCompanySlugFromExperience(args.profile.experience),
@@ -237,6 +245,8 @@ export const backfillSuggestSearchText = mutation({
         schools: profile.schools,
         companies: profile.companies,
         jobTitles: profile.jobTitles,
+        class: profile.class,
+        family: profile.family,
       })
       if (profile.suggestSearchText === next) continue
       await ctx.db.patch(profile._id, { suggestSearchText: next })

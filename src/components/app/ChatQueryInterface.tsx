@@ -59,7 +59,7 @@ export function ChatQueryInterface({
   })
   const [slot3, setSlot3] = useState<Slot3Value | ''>('')
   const [inputValue, setInputValue] = useState('')
-  const debouncedInput = useDebouncedValue(inputValue, 250)
+  const debouncedInput = useDebouncedValue(inputValue, 400)
 
   const slot2Options = getSlot2Options(slot1, config)
   const effectiveSlot2 = slot2Options.some((o) => o.value === slot2)
@@ -85,7 +85,15 @@ export function ChatQueryInterface({
   )
 
   const slot3Options = useMemo(() => {
-    const values = isSearchMode ? searchResults : browsePage?.items
+    if (isSearchMode) {
+      if (searchResults !== undefined) {
+        return searchResults.map((v) => ({ value: v, label: v }))
+      }
+      const fallback = browsePage?.items
+      if (!fallback) return []
+      return fallback.map((v) => ({ value: v, label: v }))
+    }
+    const values = browsePage?.items
     if (!values) return []
     return values.map((v) => ({ value: v, label: v }))
   }, [isSearchMode, searchResults, browsePage])
@@ -181,6 +189,7 @@ export function ChatQueryInterface({
           onValueChange={(v) => setSlot3(v as Slot3Value)}
           onInputValueChange={(v) => setInputValue(v)}
           items={slot3Options}
+          filteredItems={slot3Options}
         >
           <ComboboxInput
             className={cn(
@@ -190,7 +199,7 @@ export function ChatQueryInterface({
               '**:data-[slot=input-group-control]:text-foreground',
               '**:data-[slot=input-group-control]:placeholder:text-muted-foreground'
             )}
-            disabled={slot3Options.length === 0 || !!isLoading}
+            disabled={!organizationId || !!isLoading || !!hasNoFacets}
             placeholder={slot3Placeholder}
             showClear
           />

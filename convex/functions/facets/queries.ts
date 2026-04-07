@@ -7,7 +7,9 @@ const facetKeyValidator = v.union(
   v.literal('majors'),
   v.literal('schools'),
   v.literal('currentRoles'),
-  v.literal('pastRoles')
+  v.literal('pastRoles'),
+  v.literal('classes'),
+  v.literal('families')
 )
 
 const DEFAULT_PAGE_SIZE = 200

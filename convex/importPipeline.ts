@@ -30,6 +30,11 @@ function normalizeEmail(email?: string): string | undefined {
   return trimmed.toLowerCase()
 }
 
+function normalizeOptionalHeaderField(value?: string): string | undefined {
+  const trimmed = value?.trim()
+  return trimmed || undefined
+}
+
 type ClaimedItem = {
   id: Id<'importQueue'>
   organizationId: Id<'organizations'>
@@ -68,11 +73,13 @@ export const processImportQueue = action({
         const raw = await provider.fetchFullProfile(username)
         const profile = mapToProfile(raw, item.organizationId)
         const email = normalizeEmail(item.email)
+        const importClass = normalizeOptionalHeaderField(item.class)
+        const importFamily = normalizeOptionalHeaderField(item.family)
         const profileForImport = {
           ...profile,
           ...(email ? { email } : {}),
-          ...(item.class ? { class: item.class } : {}),
-          ...(item.family ? { family: item.family } : {}),
+          ...(importClass ? { class: importClass } : {}),
+          ...(importFamily ? { family: importFamily } : {}),
           ...(item.profileType ? { profileType: item.profileType } : {}),
         }
         const normalized = await normalizeSearchArrays({
@@ -94,6 +101,8 @@ export const processImportQueue = action({
           schools: profileForImport.schools,
           companies: profileForImport.companies,
           jobTitles: profileForImport.jobTitles,
+          class: profileForImport.class,
+          family: profileForImport.family,
         })
         profileForImport.companiesSearchSlug =
           toCompaniesSearchSlugFromExperience(profileForImport.experience)

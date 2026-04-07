@@ -8,6 +8,8 @@ export type FacetKey =
   | 'schools'
   | 'currentRoles'
   | 'pastRoles'
+  | 'classes'
+  | 'families'
 
 export const ALL_FACET_KEYS: FacetKey[] = [
   'companies',
@@ -16,6 +18,8 @@ export const ALL_FACET_KEYS: FacetKey[] = [
   'schools',
   'currentRoles',
   'pastRoles',
+  'classes',
+  'families',
 ]
 
 export function canonicalizeKey(value: string): string {
@@ -34,6 +38,14 @@ type ProfileLike = {
   }>
   majors: string[]
   schools: string[]
+  /**
+   * Fraternity class (e.g. Alpha … Alpha Pi). Many members share the same class; facet `classes` aggregates counts.
+   */
+  class?: string
+  /**
+   * One of a small fixed set of families (e.g. five). Many members share the same family; facet `families` aggregates counts.
+   */
+  family?: string
 }
 
 /**
@@ -54,6 +66,9 @@ export function extractFacetTokens(profile: ProfileLike): Record<FacetKey, strin
 
   const roleTenure = splitJobTitlesByTenure(profile.experience)
 
+  const classes = profile.class?.trim() ? dedupeTokens([profile.class]) : []
+  const families = profile.family?.trim() ? dedupeTokens([profile.family]) : []
+
   return {
     companies: dedupeTokens(companies),
     currentCompanies: dedupeTokens(currentCompanies),
@@ -61,6 +76,8 @@ export function extractFacetTokens(profile: ProfileLike): Record<FacetKey, strin
     schools: dedupeTokens(profile.schools),
     currentRoles: dedupeTokens(roleTenure.current),
     pastRoles: dedupeTokens(roleTenure.past),
+    classes,
+    families,
   }
 }
 

@@ -15,7 +15,9 @@ const facetKeyValidator = v.union(
   v.literal('majors'),
   v.literal('schools'),
   v.literal('currentRoles'),
-  v.literal('pastRoles')
+  v.literal('pastRoles'),
+  v.literal('classes'),
+  v.literal('families')
 )
 
 async function incrementFacetValue(
@@ -88,6 +90,8 @@ export const applyProfileFacetChanges = internalMutation({
       schools: v.array(v.string()),
       currentRoles: v.array(v.string()),
       pastRoles: v.array(v.string()),
+      classes: v.array(v.string()),
+      families: v.array(v.string()),
     }),
     newTokens: v.object({
       companies: v.array(v.string()),
@@ -96,6 +100,8 @@ export const applyProfileFacetChanges = internalMutation({
       schools: v.array(v.string()),
       currentRoles: v.array(v.string()),
       pastRoles: v.array(v.string()),
+      classes: v.array(v.string()),
+      families: v.array(v.string()),
     }),
   },
   handler: async (ctx, args) => {
