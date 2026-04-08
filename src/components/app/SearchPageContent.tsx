@@ -15,7 +15,11 @@ import { normalizeSearchValue } from '@/lib/search'
 import { searchProfilesForViewerFn } from '@/lib/search.functions'
 import { cn } from '@/lib/utils'
 
-type SearchParams = { slot2: Slot2Value; slot3: string } | null
+type SearchParams = {
+  slot2: Slot2Value
+  slot3: string
+  profileType?: 'alumni' | 'member'
+} | null
 
 export function SearchPageContent() {
   const organizationId = useOrganization()
@@ -40,6 +44,7 @@ export function SearchPageContent() {
       organizationId,
       searchParams?.slot2 ?? null,
       searchParams?.slot3 ?? null,
+      searchParams?.profileType ?? null,
       ...(searchParams ? [searchKey] : []),
     ],
     enabled: shouldRunSearch,
@@ -54,6 +59,9 @@ export function SearchPageContent() {
           searchKey,
           cursor: pageParam,
           numItems: 10,
+          ...(searchParams!.profileType
+            ? { profileType: searchParams!.profileType }
+            : {}),
         },
       }),
   })
@@ -66,12 +74,20 @@ export function SearchPageContent() {
     searchParams?.slot2 === 'works_as' || searchParams?.slot2 === 'worked_as'
   const hasMoreServer = !!hasNextPage
 
-  function handleSearch(slot2: Slot2Value, slot3: string) {
-    const normalized = normalizeSearchValue(slot2, slot3)
+  function handleSearch(params: {
+    slot2: Slot2Value
+    searchQuery: string
+    profileType?: 'alumni' | 'member'
+  }) {
+    const normalized = normalizeSearchValue(params.slot2, params.searchQuery)
     if (!normalized) return
     setSelectedProfileId(null)
     setSearchKey(Date.now())
-    setSearchParams({ slot2, slot3: normalized })
+    setSearchParams({
+      slot2: params.slot2,
+      slot3: normalized,
+      ...(params.profileType ? { profileType: params.profileType } : {}),
+    })
   }
 
   function handleRefresh() {

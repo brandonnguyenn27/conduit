@@ -181,8 +181,9 @@ export function ProfileTable({
 		hasMore,
 		totalResults,
 	);
+	// Keep pagination visible on an empty page (e.g. edge cases) so Previous still works.
 	const showResultsFooter =
-		!showEmptyState && (profiles.length > 0 || hasPrevious || hasMore);
+		!isLoading && (profiles.length > 0 || hasPrevious || hasMore);
 
 	const paginationSegments = useMemo(
 		() => getPaginationSegments(currentPage, knownPages),

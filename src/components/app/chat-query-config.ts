@@ -1,4 +1,4 @@
-export type Slot1Value = 'alumni' | 'member'
+export type Slot1Value = 'alumni' | 'member' | 'all'
 export type Slot2Value =
   | 'works_at'
   | 'worked_at'
@@ -30,6 +30,7 @@ export const CHAT_QUERY_CONFIG: ChatQueryMadLibConfig = {
   slot1: [
     { value: 'alumni', label: 'alumni' },
     { value: 'member', label: 'members' },
+    { value: 'all', label: 'everyone' },
   ],
   slot2BySlot1: {
     alumni: [
@@ -46,6 +47,13 @@ export const CHAT_QUERY_CONFIG: ChatQueryMadLibConfig = {
       { value: 'worked_as', label: 'who worked as' },
       { value: 'studies', label: 'who studies' },
     ],
+    all: [
+      { value: 'works_at', label: 'who work at' },
+      { value: 'worked_at', label: 'who worked at' },
+      { value: 'works_as', label: 'who work as' },
+      { value: 'worked_as', label: 'who worked as' },
+      { value: 'studied', label: 'who studied or are studying' },
+    ],
   },
   slot2ToFacet: {
     works_at: 'currentCompanies',
@@ -59,6 +67,15 @@ export const CHAT_QUERY_CONFIG: ChatQueryMadLibConfig = {
 
 export function getSlot2Options(slot1: Slot1Value, config: ChatQueryMadLibConfig) {
   return config.slot2BySlot1[slot1] ?? []
+}
+
+/** Maps slot1 to `profiles.profileType` for search; `all` means no type filter. */
+export function getProfileTypeFilterFromSlot1(
+  slot1: Slot1Value
+): 'alumni' | 'member' | undefined {
+  if (slot1 === 'alumni') return 'alumni'
+  if (slot1 === 'member') return 'member'
+  return undefined
 }
 
 export function getFacetKeyForSlot2(slot2: Slot2Value): FacetKey {

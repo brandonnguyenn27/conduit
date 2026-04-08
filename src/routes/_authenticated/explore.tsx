@@ -24,8 +24,6 @@ import { getOrganizationDataFn } from '@/lib/get-organization-data.functions'
 import { cn } from '@/lib/utils'
 
 type ExploreFilters = {
-  industry?: string
-  major?: string
   profileType?: 'alumni' | 'member'
   class?: string
   family?: string
@@ -118,8 +116,12 @@ function ExplorePage() {
         const next = { ...prev }
         if (value === ALL_VALUE || value === '') {
           delete next[key]
-        } else {
-          ;(next as any)[key] = value
+        } else if (key === 'profileType') {
+          next.profileType = value as ExploreFilters['profileType']
+        } else if (key === 'class') {
+          next.class = value
+        } else if (key === 'family') {
+          next.family = value
         }
         return next
       })
@@ -203,30 +205,6 @@ function ExplorePage() {
               </SelectContent>
             </Select>
 
-            <Select
-              value={filters.major ?? ALL_VALUE}
-              onValueChange={(v) => handleFilterChange('major', v)}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Major" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_VALUE}>All Majors</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={filters.industry ?? ALL_VALUE}
-              onValueChange={(v) => handleFilterChange('industry', v)}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Industry" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_VALUE}>All Industries</SelectItem>
-              </SelectContent>
-            </Select>
-
             {hasActiveFilters(filters) && (
               <button
                 type="button"
@@ -289,11 +267,5 @@ function ExplorePage() {
 
 
 function hasActiveFilters(filters: ExploreFilters): boolean {
-  return !!(
-    filters.industry ||
-    filters.major ||
-    filters.profileType ||
-    filters.class ||
-    filters.family
-  )
+  return !!(filters.profileType || filters.class || filters.family)
 }

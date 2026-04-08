@@ -4,8 +4,6 @@ import type { Id } from '@convex/_generated/dataModel'
 import { fetchAuthQuery } from '@/lib/auth-server'
 
 type ExploreFilters = {
-  industry?: string
-  major?: string
   profileType?: 'alumni' | 'member'
   class?: string
   family?: string

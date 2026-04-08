@@ -141,6 +141,7 @@ export const searchProfilesPaginated = query({
     slot2: slot2SearchValidator,
     paginationOpts: paginationOptsValidator,
     searchKey: v.optional(v.number()),
+    profileType: v.optional(v.union(v.literal('alumni'), v.literal('member'))),
   },
   returns: paginationResultValidator(
     v.object({
@@ -195,9 +196,15 @@ export const searchProfilesPaginated = query({
 
     const result = await ctx.db
       .query('profiles')
-      .withSearchIndex(searchIndex, (search) =>
-        search.search(searchField, safeSearchSlug).eq('organizationId', args.organizationId)
-      )
+      .withSearchIndex(searchIndex, (search) => {
+        let chain = search
+          .search(searchField, safeSearchSlug)
+          .eq('organizationId', args.organizationId)
+        if (args.profileType) {
+          chain = chain.eq('profileType', args.profileType)
+        }
+        return chain
+      })
       .paginate(args.paginationOpts)
 
     const roleExactQuery = normalizeRoleExact(queryText)
@@ -284,8 +291,6 @@ export const listPaginatedForExplore = query({
     paginationOpts: paginationOptsValidator,
     filters: v.optional(
       v.object({
-        industry: v.optional(v.string()),
-        major: v.optional(v.string()),
         profileType: v.optional(v.union(v.literal('alumni'), v.literal('member'))),
         class: v.optional(v.string()),
         family: v.optional(v.string()),
@@ -304,48 +309,38 @@ export const listPaginatedForExplore = query({
       .withIndex('by_better_auth_user', (q) => q.eq('betterAuthUserId', user._id))
       .unique()
 
-    const result = await ctx.db
+    const filters = args.filters
+    const currentUserProfileId = appUser?.profileId
+
+    let profileQuery = ctx.db
       .query('profiles')
       .withIndex('by_organization_linkedin', (q) =>
         q.eq('organizationId', args.organizationId)
       )
-      .order('desc')
-      .paginate(args.paginationOpts)
 
-    const filters = args.filters
-    const currentUserProfileId = appUser?.profileId
+    if (currentUserProfileId) {
+      profileQuery = profileQuery.filter((q) =>
+        q.neq(q.field('_id'), currentUserProfileId)
+      )
+    }
 
-    const filteredPage = result.page.filter((profile) => {
-      if (currentUserProfileId && profile._id === currentUserProfileId) {
-        return false
-      }
+    if (filters?.profileType) {
+      profileQuery = profileQuery.filter((q) =>
+        q.eq(q.field('profileType'), filters.profileType)
+      )
+    }
+    if (filters?.class) {
+      profileQuery = profileQuery.filter((q) => q.eq(q.field('class'), filters.class))
+    }
+    if (filters?.family) {
+      profileQuery = profileQuery.filter((q) => q.eq(q.field('family'), filters.family))
+    }
 
-      if (filters?.industry && profile.industry !== filters.industry) {
-        return false
-      }
-
-      if (filters?.major && !profile.majors.includes(filters.major)) {
-        return false
-      }
-
-      if (filters?.profileType && profile.profileType !== filters.profileType) {
-        return false
-      }
-
-      if (filters?.class && profile.class !== filters.class) {
-        return false
-      }
-
-      if (filters?.family && profile.family !== filters.family) {
-        return false
-      }
-
-      return true
-    })
+    const result = await profileQuery.order('desc').paginate(args.paginationOpts)
 
     return {
       ...result,
-      page: filteredPage.map((profile) => ({
+      page: result.page.map((profile) => ({
         _id: profile._id,
         name: profile.name,
         headline: profile.currentExperience?.title || '',

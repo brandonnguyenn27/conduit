@@ -43,6 +43,9 @@ export type ProfileDetails = {
   summary?: string
   location?: string
   linkedInUrl: string
+  email?: string
+  class?: string
+  family?: string
   experience: ExperienceEntry[]
   education: EducationEntry[]
   skills?: string[]
@@ -80,6 +83,22 @@ export function ProfileDetailDrawer({
                   ? [profile.headline, profile.location].filter(Boolean).join(' · ')
                   : 'Loading profile details...'}
               </DrawerDescription>
+              {profile && (profile.email || profile.class || profile.family) ? (
+                <p className="text-muted-foreground mt-1.5 max-w-full text-sm wrap-break-word">
+                  {profile.email ? (
+                    <>
+                      <a
+                        href={`mailto:${profile.email}`}
+                        className="text-foreground underline-offset-2 hover:underline"
+                      >
+                        {profile.email}
+                      </a>
+                      {profile.class || profile.family ? ' · ' : ''}
+                    </>
+                  ) : null}
+                  {[profile.class, profile.family].filter(Boolean).join(' · ')}
+                </p>
+              ) : null}
             </div>
             {profile ? (
               <div className="flex shrink-0 items-center justify-end gap-2">

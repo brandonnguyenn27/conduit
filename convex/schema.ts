@@ -77,27 +77,27 @@ export default defineSchema({
     })
     .searchIndex('by_companies_slug_search', {
       searchField: 'companiesSearchSlug',
-      filterFields: ['organizationId'],
+      filterFields: ['organizationId', 'profileType'],
     })
     .searchIndex('by_current_company_slug_search', {
       searchField: 'currentCompanySlug',
-      filterFields: ['organizationId'],
+      filterFields: ['organizationId', 'profileType'],
     })
     .searchIndex('by_education_slug_search', {
       searchField: 'educationSearchSlug',
-      filterFields: ['organizationId'],
+      filterFields: ['organizationId', 'profileType'],
     })
     .searchIndex('by_job_titles_slug_search', {
       searchField: 'jobTitlesSearchSlug',
-      filterFields: ['organizationId'],
+      filterFields: ['organizationId', 'profileType'],
     })
     .searchIndex('by_current_job_titles_slug_search', {
       searchField: 'currentJobTitlesSearchSlug',
-      filterFields: ['organizationId'],
+      filterFields: ['organizationId', 'profileType'],
     })
     .searchIndex('by_past_job_titles_slug_search', {
       searchField: 'pastJobTitlesSearchSlug',
-      filterFields: ['organizationId'],
+      filterFields: ['organizationId', 'profileType'],
     }),
 
   onboardingTokens: defineTable({

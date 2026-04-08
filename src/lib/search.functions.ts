@@ -29,6 +29,7 @@ export const searchProfilesForViewerFn = createServerFn({ method: 'POST' })
       searchKey: number
       cursor?: string | null
       numItems?: number
+      profileType?: 'alumni' | 'member'
     }) => payload
   )
   .handler(async ({ data }) => {
@@ -39,6 +40,7 @@ export const searchProfilesForViewerFn = createServerFn({ method: 'POST' })
       searchQuery: data.searchQuery,
       slot2: data.slot2,
       searchKey: data.searchKey,
+      ...(data.profileType ? { profileType: data.profileType } : {}),
       paginationOpts: {
         cursor,
         numItems,

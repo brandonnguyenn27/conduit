@@ -31,12 +31,17 @@ import {
   type Slot2Value,
   type Slot3Value,
   getFacetKeyForSlot2,
+  getProfileTypeFilterFromSlot1,
   getSlot2Options,
 } from './chat-query-config'
 
 interface ChatQueryInterfaceProps {
   organizationId: Id<'organizations'> | null
-  onSearch?: (slot2: Slot2Value, searchQuery: string) => void
+  onSearch?: (params: {
+    slot2: Slot2Value
+    searchQuery: string
+    profileType?: 'alumni' | 'member'
+  }) => void
   compact?: boolean
   resultsSlot?: ReactNode
   isSearching?: boolean
@@ -224,7 +229,12 @@ export function ChatQueryInterface({
           as="button"
           onClick={() => {
             if (!canSearch || !effectiveSlot2 || isSearching) return
-            onSearch?.(effectiveSlot2 as Slot2Value, trimmedSlot3)
+            const profileType = getProfileTypeFilterFromSlot1(slot1)
+            onSearch?.({
+              slot2: effectiveSlot2 as Slot2Value,
+              searchQuery: trimmedSlot3,
+              ...(profileType ? { profileType } : {}),
+            })
           }}
           aria-disabled={!canSearch || isSearching}
           className="dark:bg-black bg-white text-black dark:text-white flex items-center space-x-2 h-9 w-24 text-center justify-center "

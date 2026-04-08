@@ -23,9 +23,10 @@ const GREEK_TO_PI = [
 ] as const
 
 /**
- * Class line from single Greek names (Alpha … Pi) through compounds Alpha Alpha … Alpha Pi.
+ * Class line: Charter (before Alpha), then single Greek names (Alpha … Pi), then compounds Alpha Alpha … Alpha Pi.
  */
 export const FRATERNITY_CLASS_LABELS: readonly string[] = [
+  'Charter',
   ...GREEK_TO_PI,
   ...GREEK_TO_PI.map((second) => `Alpha ${second}`),
 ]
