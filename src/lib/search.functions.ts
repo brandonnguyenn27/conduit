@@ -2,7 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import type { Slot2Value } from '@/components/app/chat-query-config'
-import { fetchAuthQuery } from '@/lib/auth-server'
+import { fetchAuthQuery } from '@/lib/auth.server'
 import { getOrganizationDataFn } from '@/lib/get-organization-data.functions'
 
 export const getSearchOrganizationIdFn = createServerFn({ method: 'GET' }).handler(

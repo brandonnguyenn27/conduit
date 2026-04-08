@@ -245,6 +245,7 @@ export const issueClaimCode = action({
     const code = generateClaimCode()
     const expiresAt = Date.now() + CLAIM_CODE_TTL_MS
     await ctx.runMutation(internal.functions.onboarding.mutations.createVerificationCode, {
+      organizationId: token.organizationId,
       profileId: args.profileId,
       code,
       expiresAt,

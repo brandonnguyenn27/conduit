@@ -184,11 +184,13 @@ export default defineSchema({
     .index('by_organization', ['organizationId']),
 
   claimCodes: defineTable({
+    organizationId: v.optional(v.id('organizations')),
     profileId: v.id('profiles'),
     code: v.string(),
     expiresAt: v.number(),
     usedAt: v.optional(v.number()),
   })
+    .index('by_organization_expiresAt', ['organizationId', 'expiresAt'])
     .index('by_profile', ['profileId'])
     .index('by_code', ['code']),
 

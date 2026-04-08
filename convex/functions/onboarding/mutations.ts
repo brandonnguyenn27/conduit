@@ -19,12 +19,14 @@ export const createToken = internalMutation({
 
 export const createVerificationCode = internalMutation({
   args: {
+    organizationId: v.id('organizations'),
     profileId: v.id('profiles'),
     code: v.string(),
     expiresAt: v.number(),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert('claimCodes', {
+      organizationId: args.organizationId,
       profileId: args.profileId,
       code: args.code,
       expiresAt: args.expiresAt,

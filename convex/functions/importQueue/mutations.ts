@@ -1,5 +1,5 @@
 import { api } from '../../_generated/api'
-import { internalMutation, mutation } from '../../_generated/server'
+import { internalMutation, mutation, type MutationCtx } from '../../_generated/server'
 import { v } from 'convex/values'
 import {
   PIPELINE_BATCH_SIZE,
@@ -7,11 +7,46 @@ import {
   PIPELINE_NEXT_RUN_AFTER_MS,
 } from '../../lib/importPipelineConfig'
 import { MAX_CREATE_MANY, statusValidator, TEST_URL_PREFIX } from './helpers'
+import { authComponent } from '../../auth'
 
 function normalizeOptionalEmail(email?: string): string | undefined {
   const trimmed = email?.trim()
   if (!trimmed) return undefined
   return trimmed.toLowerCase()
+}
+
+const LINKEDIN_PROFILE_URL_PATTERN = /^https?:\/\/(www\.)?linkedin\.com\/in\/[^/?#]+\/?$/i
+
+function normalizeLinkedInProfileUrl(url: string): string | null {
+  const trimmed = url.trim()
+  if (!trimmed || !LINKEDIN_PROFILE_URL_PATTERN.test(trimmed)) {
+    return null
+  }
+
+  const parsed = new URL(trimmed)
+  const [, slug] = parsed.pathname.split('/').filter(Boolean)
+  if (!slug) {
+    return null
+  }
+
+  return `https://www.linkedin.com/in/${slug}`
+}
+
+async function requireAdminAppUser(ctx: MutationCtx) {
+  const user = await authComponent.safeGetAuthUser(ctx)
+  if (!user) {
+    throw new Error('Unauthorized')
+  }
+
+  const appUser = await ctx.db
+    .query('appUsers')
+    .withIndex('by_better_auth_user', (q) => q.eq('betterAuthUserId', user._id))
+    .unique()
+  if (!appUser || appUser.isAdmin !== true) {
+    throw new Error('Forbidden')
+  }
+
+  return appUser
 }
 
 /** Schedules the next pipeline run (used by the action when a full batch was processed so more may be pending). */
@@ -113,6 +148,66 @@ export const createMany = mutation({
       limit: PIPELINE_BATCH_SIZE,
     })
     return ids
+  },
+})
+
+export const createManyForCurrentOrg = mutation({
+  args: {
+    linkedInUrls: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const appUser = await requireAdminAppUser(ctx)
+    if (args.linkedInUrls.length > MAX_CREATE_MANY) {
+      throw new Error(
+        `linkedInUrls length ${args.linkedInUrls.length} exceeds max ${MAX_CREATE_MANY}. Submit in chunks.`
+      )
+    }
+
+    const seen = new Set<string>()
+    const normalizedUrls: string[] = []
+    const invalidUrls: string[] = []
+    let skippedDuplicates = 0
+
+    for (const linkedInUrl of args.linkedInUrls) {
+      const normalized = normalizeLinkedInProfileUrl(linkedInUrl)
+      if (!normalized) {
+        invalidUrls.push(linkedInUrl)
+        continue
+      }
+
+      const dedupeKey = normalized.toLowerCase()
+      if (seen.has(dedupeKey)) {
+        skippedDuplicates += 1
+        continue
+      }
+      seen.add(dedupeKey)
+      normalizedUrls.push(normalized)
+    }
+
+    const now = Date.now()
+    const ids = await Promise.all(
+      normalizedUrls.map((linkedInUrl) =>
+        ctx.db.insert('importQueue', {
+          organizationId: appUser.organizationId,
+          linkedInUrl,
+          status: 'pending',
+          createdAt: now,
+        })
+      )
+    )
+
+    if (ids.length > 0) {
+      await ctx.scheduler.runAfter(PIPELINE_INITIAL_RUN_AFTER_MS, api.importPipeline.processImportQueue, {
+        limit: PIPELINE_BATCH_SIZE,
+      })
+    }
+
+    return {
+      createdCount: ids.length,
+      skippedInvalid: invalidUrls.length,
+      skippedDuplicates,
+      invalidUrls: invalidUrls.slice(0, 25),
+    }
   },
 })
 

@@ -5,7 +5,6 @@ import {
   createRootRouteWithContext,
   useRouteContext,
 } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/react-start'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import { ConvexBetterAuthProvider } from '@convex-dev/better-auth/react'
@@ -14,22 +13,18 @@ import Header from '../components/Header'
 import TanStackQueryProvider from '../integrations/tanstack-query/root-provider'
 import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
 import { authClient } from '@/lib/auth-client'
-import { getToken } from '@/lib/auth-server'
+import { getAuthFn } from '@/lib/auth.functions'
 import appCss from '../styles.css?url'
 
 import type { QueryClient } from '@tanstack/react-query'
 import type { ConvexQueryClient } from '@convex-dev/react-query'
-
-const getAuth = createServerFn({ method: 'GET' }).handler(async () => {
-  return await getToken()
-})
 
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient
   convexQueryClient: ConvexQueryClient
 }>()({
   beforeLoad: async (ctx) => {
-    const token = await getAuth()
+    const token = await getAuthFn()
     if (token) {
       ctx.context.convexQueryClient.serverHttpClient?.setAuth(token)
     }

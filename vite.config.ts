@@ -16,6 +16,11 @@ const config = defineConfig({
   ssr: {
     noExternal: ['@convex-dev/better-auth'],
   },
+  build: {
+    rollupOptions: {
+      external: [/^node:/],
+    },
+  },
   plugins: [
     devtools(),
     nitro({ rollupConfig: { external: [/^@sentry\//] } }),

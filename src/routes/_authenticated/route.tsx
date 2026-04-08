@@ -20,7 +20,7 @@ export const Route = createFileRoute('/_authenticated')({
 })
 
 function AuthenticatedLayout() {
-  const { organizationId } = useLoaderData({ from: '/_authenticated' })
+  const { organizationId, isAdmin } = useLoaderData({ from: '/_authenticated' })
 
   return (
     <OrganizationProvider organizationId={organizationId}>
@@ -79,6 +79,18 @@ function AuthenticatedLayout() {
                   </Link>
                 </NavigationMenuLink>
               </NavigationMenuItem>
+              {isAdmin ? (
+                <NavigationMenuItem>
+                  <NavigationMenuLink asChild className="rounded-full px-4 py-2">
+                    <Link
+                      to="/admin"
+                      activeProps={{ className: 'bg-accent text-accent-foreground' }}
+                    >
+                      Admin
+                    </Link>
+                  </NavigationMenuLink>
+                </NavigationMenuItem>
+              ) : null}
             </NavigationMenuList>
           </NavigationMenu>
         </header>

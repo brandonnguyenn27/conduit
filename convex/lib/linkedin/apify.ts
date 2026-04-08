@@ -1,5 +1,3 @@
-'use node'
-
 import type { LinkedInProfileProvider, RawLinkedInProfile } from './types'
 
 const APIFY_BASE_URL = 'https://api.apify.com/v2'

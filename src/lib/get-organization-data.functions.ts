@@ -3,7 +3,7 @@ import type { Doc } from "@convex/_generated/dataModel";
 import { redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { ConvexHttpClient } from "convex/browser";
-import { fetchAuthQuery } from "@/lib/auth-server";
+import { fetchAuthQuery } from "@/lib/auth.server";
 
 type PublicOrganization = {
 	_id: Doc<"organizations">["_id"];
@@ -30,7 +30,10 @@ export const getOrganizationDataFn = createServerFn({ method: "GET" }).handler(
 			api.functions.appUsers.queries.getByBetterAuthUserId,
 			{ betterAuthUserId: user._id },
 		);
-		return { organizationId: appUser?.organizationId ?? null };
+		return {
+			organizationId: appUser?.organizationId ?? null,
+			isAdmin: appUser?.isAdmin === true,
+		};
 	},
 );
 
