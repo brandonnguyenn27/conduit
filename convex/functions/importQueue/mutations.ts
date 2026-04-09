@@ -153,25 +153,59 @@ export const createMany = mutation({
 
 export const createManyForCurrentOrg = mutation({
   args: {
-    linkedInUrls: v.array(v.string()),
+    linkedInUrls: v.optional(v.array(v.string())),
+    rows: v.optional(
+      v.array(
+        v.object({
+          linkedInUrl: v.string(),
+          email: v.optional(v.string()),
+          class: v.optional(v.string()),
+          family: v.optional(v.string()),
+          profileType: profileTypeValidator,
+        })
+      )
+    ),
   },
   handler: async (ctx, args) => {
     const appUser = await requireAdminAppUser(ctx)
-    if (args.linkedInUrls.length > MAX_CREATE_MANY) {
+
+    const rows =
+      args.rows ??
+      args.linkedInUrls?.map((linkedInUrl) => ({
+        linkedInUrl,
+        email: undefined,
+        class: undefined,
+        family: undefined,
+        profileType: undefined,
+      })) ??
+      []
+
+    if (rows.length === 0) {
+      throw new Error('Provide rows or linkedInUrls with at least one item.')
+    }
+
+    if (rows.length > MAX_CREATE_MANY) {
       throw new Error(
-        `linkedInUrls length ${args.linkedInUrls.length} exceeds max ${MAX_CREATE_MANY}. Submit in chunks.`
+        `rows length ${rows.length} exceeds max ${MAX_CREATE_MANY}. Submit in chunks.`
       )
     }
 
     const seen = new Set<string>()
-    const normalizedUrls: string[] = []
+    type NormalizedRow = {
+      linkedInUrl: string
+      email?: string
+      class?: string
+      family?: string
+      profileType?: 'alumni' | 'member'
+    }
+    const normalizedRows: NormalizedRow[] = []
     const invalidUrls: string[] = []
     let skippedDuplicates = 0
 
-    for (const linkedInUrl of args.linkedInUrls) {
-      const normalized = normalizeLinkedInProfileUrl(linkedInUrl)
+    for (const row of rows) {
+      const normalized = normalizeLinkedInProfileUrl(row.linkedInUrl)
       if (!normalized) {
-        invalidUrls.push(linkedInUrl)
+        invalidUrls.push(row.linkedInUrl)
         continue
       }
 
@@ -181,15 +215,25 @@ export const createManyForCurrentOrg = mutation({
         continue
       }
       seen.add(dedupeKey)
-      normalizedUrls.push(normalized)
+      normalizedRows.push({
+        linkedInUrl: normalized,
+        email: row.email,
+        class: row.class,
+        family: row.family,
+        profileType: row.profileType,
+      })
     }
 
     const now = Date.now()
     const ids = await Promise.all(
-      normalizedUrls.map((linkedInUrl) =>
+      normalizedRows.map((r) =>
         ctx.db.insert('importQueue', {
           organizationId: appUser.organizationId,
-          linkedInUrl,
+          linkedInUrl: r.linkedInUrl,
+          email: normalizeOptionalEmail(r.email),
+          class: r.class,
+          family: r.family,
+          profileType: r.profileType,
           status: 'pending',
           createdAt: now,
         })

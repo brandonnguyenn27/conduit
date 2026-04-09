@@ -1,5 +1,6 @@
 import type { Id } from "@convex/_generated/dataModel";
 import { useForm } from "@tanstack/react-form";
+import { REGEXP_ONLY_DIGITS_AND_CHARS } from "input-otp";
 import { useId, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -67,13 +68,13 @@ export function Step3VerifyCode({
 
 	return (
 		<div className="grid gap-4">
-				<div className="rounded-md border border-border bg-muted/40 p-4">
-					<p className="text-sm text-muted-foreground">
-						A claim code has been sent to your admin for{" "}
-						<span className="font-medium text-foreground">{email}</span>. Please
-						contact them if your account was found in our system.
-					</p>
-				</div>
+			<div className="rounded-md border border-border bg-muted/40 p-4">
+				<p className="text-sm text-muted-foreground">
+					A claim code has been sent to your admin for{" "}
+					<span className="font-medium text-foreground">{email}</span>. Please
+					contact them if your account was found in our system.
+				</p>
+			</div>
 
 			<form
 				className="grid gap-4"
@@ -104,7 +105,8 @@ export function Step3VerifyCode({
 								}}
 								onBlur={field.handleBlur}
 								autoComplete="off"
-								pattern="^[A-Z0-9]+$"
+								inputMode="text"
+								pattern={REGEXP_ONLY_DIGITS_AND_CHARS}
 								containerClassName="justify-start"
 								className="uppercase"
 							>
