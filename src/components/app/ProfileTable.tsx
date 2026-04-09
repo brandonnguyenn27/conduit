@@ -239,20 +239,21 @@ export function ProfileTable({
 							transition={{ duration: 0.25, ease: "easeInOut" }}
 							className="col-start-1 row-start-1 w-full min-w-0"
 						>
-							<Table className="table-fixed w-full">
+							<Table className="w-full table-auto md:table-fixed">
 								<TableHeader>
 									<TableRow>
-										<TableHead className="w-[22%] text-xs uppercase tracking-wide">
+										<TableHead className="w-[72%] text-xs uppercase tracking-wide md:w-[22%]">
 											Name
 										</TableHead>
-										<TableHead className="w-[40%] text-xs uppercase tracking-wide">
+										<TableHead className="hidden w-[40%] text-xs uppercase tracking-wide md:table-cell">
 											Current Occupation
 										</TableHead>
-										<TableHead className="w-[22%] text-xs uppercase tracking-wide">
+										<TableHead className="hidden w-[22%] text-xs uppercase tracking-wide md:table-cell">
 											Company
 										</TableHead>
-										<TableHead className="w-[16%] text-right text-xs uppercase tracking-wide">
-											LinkedIn
+										<TableHead className="w-[28%] text-right text-xs uppercase tracking-wide md:w-[16%]">
+											<span className="md:hidden">Actions</span>
+											<span className="hidden md:inline">LinkedIn</span>
 										</TableHead>
 									</TableRow>
 								</TableHeader>
@@ -283,7 +284,7 @@ export function ProfileTable({
 														{nameDisplay}
 													</span>
 												</TableCell>
-												<TableCell className="py-4 text-muted-foreground">
+												<TableCell className="hidden py-4 text-muted-foreground md:table-cell">
 													<span
 														className="block truncate"
 														title={profile.headline}
@@ -291,7 +292,7 @@ export function ProfileTable({
 														{headlineDisplay}
 													</span>
 												</TableCell>
-												<TableCell className="py-4">
+												<TableCell className="hidden py-4 md:table-cell">
 													<span className="block truncate" title={companyRaw}>
 														{companyDisplay}
 													</span>
@@ -333,8 +334,8 @@ export function ProfileTable({
 												<TableCell className="py-4">
 													<div className="h-9 w-px"></div>
 												</TableCell>
-												<TableCell className="py-4"></TableCell>
-												<TableCell className="py-4"></TableCell>
+												<TableCell className="hidden py-4 md:table-cell"></TableCell>
+												<TableCell className="hidden py-4 md:table-cell"></TableCell>
 												<TableCell className="py-4"></TableCell>
 											</TableRow>
 										),

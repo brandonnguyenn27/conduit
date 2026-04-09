@@ -70,9 +70,9 @@ export function Step3VerifyCode({
 		<div className="grid gap-4">
 			<div className="rounded-md border border-border bg-muted/40 p-4">
 				<p className="text-sm text-muted-foreground">
-					A claim code has been sent to your admin for{" "}
-					<span className="font-medium text-foreground">{email}</span>. Please
-					contact them if your account was found in our system.
+					Get your claim code from your organization admin for{" "}
+					<span className="font-medium text-foreground">{email}</span>, then
+					enter it below to continue.
 				</p>
 			</div>
 

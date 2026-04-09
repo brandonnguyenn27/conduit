@@ -1,10 +1,12 @@
 "use client";
 import React from "react";
 import { motion } from "motion/react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
 export const BackgroundBeams = React.memo(
   ({ className }: { className?: string }) => {
+    const isMobile = useIsMobile();
     const paths = [
       "M-380 -189C-380 -189 -312 216 152 343C616 470 684 875 684 875",
       "M-373 -197C-373 -197 -305 208 159 335C623 462 691 867 691 867",
@@ -57,10 +59,25 @@ export const BackgroundBeams = React.memo(
       "M-44 -573C-44 -573 24 -168 488 -41C952 86 1020 491 1020 491",
       "M-37 -581C-37 -581 31 -176 495 -49C959 78 1027 483 1027 483",
     ];
+
+    if (isMobile) {
+      return (
+        <div
+          className={cn(
+            "absolute inset-0 h-full w-full overflow-hidden",
+            className,
+          )}
+        >
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_24%,rgba(59,130,246,0.22),transparent_48%),radial-gradient(circle_at_80%_75%,rgba(59,130,246,0.18),transparent_40%)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.45)_0%,rgba(255,255,255,0)_100%)] dark:bg-[linear-gradient(180deg,rgba(24,24,27,0.4)_0%,rgba(24,24,27,0)_100%)]" />
+        </div>
+      );
+    }
+
     return (
       <div
         className={cn(
-          "absolute inset-0 flex h-full w-full items-center justify-center [mask-repeat:no-repeat] [mask-size:40px]",
+          "absolute inset-0 flex h-full w-full items-center justify-center mask-no-repeat mask-size-[40px]",
           className,
         )}
       >
@@ -89,7 +106,7 @@ export const BackgroundBeams = React.memo(
             ></motion.path>
           ))}
           <defs>
-            {paths.map((path, index) => (
+            {paths.map((_, index) => (
               <motion.linearGradient
                 id={`linearGradient-${index}`}
                 key={`gradient-${index}`}

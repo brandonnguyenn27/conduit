@@ -16,6 +16,16 @@ type PublicOrganization = {
 };
 
 type AuthUser = { _id: string; email?: string; name?: string | null };
+type AppUserForOnboarding = {
+	organizationId: string;
+	profileId?: string;
+	email: string;
+};
+type OnboardingAccessState = {
+	isAuthenticated: boolean;
+	isOnboarded: boolean;
+	email: string | null;
+};
 
 export const getOrganizationDataFn = createServerFn({ method: "GET" }).handler(
 	async () => {
@@ -36,6 +46,50 @@ export const getOrganizationDataFn = createServerFn({ method: "GET" }).handler(
 		};
 	},
 );
+
+export const getOnboardingAccessStateFn = createServerFn({
+	method: "GET",
+}).handler(async (): Promise<OnboardingAccessState> => {
+	const user = (await fetchAuthQuery(
+		api.auth.getCurrentUser,
+		{},
+	)) as AuthUser | null;
+	if (!user) {
+		return {
+			isAuthenticated: false,
+			isOnboarded: false,
+			email: null,
+		};
+	}
+
+	const [appUser, defaultOrganization] = await Promise.all([
+		fetchAuthQuery(api.functions.appUsers.queries.getByBetterAuthUserId, {
+			betterAuthUserId: user._id,
+		}) as Promise<AppUserForOnboarding | null>,
+		fetchAuthQuery(api.functions.organizations.queries.getBySlug, {
+			slug: "default",
+		}) as Promise<{ _id: string } | null>,
+	]);
+
+	if (!appUser) {
+		return {
+			isAuthenticated: true,
+			isOnboarded: false,
+			email: user.email ?? null,
+		};
+	}
+
+	const hasProfile = !!appUser.profileId;
+	const isOnboarded = defaultOrganization
+		? hasProfile && appUser.organizationId !== defaultOrganization._id
+		: hasProfile;
+
+	return {
+		isAuthenticated: true,
+		isOnboarded,
+		email: user.email ?? appUser.email ?? null,
+	};
+});
 
 export const getOrganizationsListFn = createServerFn({ method: "GET" }).handler(
 	async (): Promise<PublicOrganization[]> => {

@@ -1,4 +1,5 @@
 "use client";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import React, { useEffect, useRef, useState, useCallback } from "react";
 
@@ -12,6 +13,7 @@ interface CanvasTextProps {
   lineGap?: number;
   curveIntensity?: number;
   overlay?: boolean;
+  disableMobileAnimation?: boolean;
 }
 
 function resolveColor(color: string): string {
@@ -35,14 +37,31 @@ export function CanvasText({
   lineGap = 10,
   curveIntensity = 60,
   overlay = false,
+  disableMobileAnimation = true,
 }: CanvasTextProps) {
+  const isMobile = useIsMobile();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textRef = useRef<HTMLSpanElement>(null);
   const bgRef = useRef<HTMLSpanElement>(null);
   const animationRef = useRef<number>(0);
   const startTimeRef = useRef<number>(0);
+  const [sizeVersion, setSizeVersion] = useState(0);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [bgColor, setBgColor] = useState("#0a0a0a");
   const [resolvedColors, setResolvedColors] = useState<string[]>([]);
+  const shouldUseFallback = disableMobileAnimation && (isMobile || prefersReducedMotion);
+  const gradientStops =
+    resolvedColors.length > 0 ? resolvedColors : colors;
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const syncMotionPreference = () => {
+      setPrefersReducedMotion(mediaQuery.matches);
+    };
+    syncMotionPreference();
+    mediaQuery.addEventListener("change", syncMotionPreference);
+    return () => mediaQuery.removeEventListener("change", syncMotionPreference);
+  }, []);
 
   const updateColors = useCallback(() => {
     if (bgRef.current) {
@@ -66,6 +85,17 @@ export function CanvasText({
   }, [updateColors]);
 
   useEffect(() => {
+    const textEl = textRef.current;
+    if (!textEl || typeof ResizeObserver === "undefined") return;
+    const resizeObserver = new ResizeObserver(() => {
+      setSizeVersion((value) => value + 1);
+    });
+    resizeObserver.observe(textEl);
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (shouldUseFallback) return;
     const canvas = canvasRef.current;
     const textEl = textRef.current;
     if (!canvas || !textEl || resolvedColors.length === 0) return;
@@ -84,6 +114,7 @@ export function CanvasText({
 
     const numLines = Math.floor(height / lineGap) + 10;
     startTimeRef.current = performance.now();
+    let frameCount = 0;
 
     const animate = (currentTime: number) => {
       const elapsed = (currentTime - startTimeRef.current) / 1000;
@@ -115,11 +146,16 @@ export function CanvasText({
         ctx.stroke();
       }
 
-      textEl.style.backgroundImage = `url(${canvas.toDataURL()})`;
-      textEl.style.backgroundSize = `${width}px ${height}px`;
+      frameCount += 1;
+      if (frameCount % 4 === 0) {
+        textEl.style.backgroundImage = `url(${canvas.toDataURL()})`;
+        textEl.style.backgroundSize = `${width}px ${height}px`;
+      }
       animationRef.current = requestAnimationFrame(animate);
     };
 
+    textEl.style.backgroundImage = `url(${canvas.toDataURL()})`;
+    textEl.style.backgroundSize = `${width}px ${height}px`;
     animationRef.current = requestAnimationFrame(animate);
 
     return () => {
@@ -132,6 +168,8 @@ export function CanvasText({
     lineWidth,
     lineGap,
     curveIntensity,
+    shouldUseFallback,
+    sizeVersion,
   ]);
 
   return (
@@ -146,22 +184,45 @@ export function CanvasText({
       />
       <canvas
         ref={canvasRef}
-        className="pointer-events-none absolute h-0 w-0 opacity-0"
+        className={cn(
+          "pointer-events-none absolute h-0 w-0 opacity-0",
+          shouldUseFallback && "hidden",
+        )}
         aria-hidden="true"
       />
-      <span
-        ref={textRef}
-        className={cn(
-          "bg-clip-text text-transparent",
-          overlay ? "absolute inset-0" : "inline",
-          className,
-        )}
-        style={{
-          WebkitBackgroundClip: "text",
-        }}
-      >
-        {text}
-      </span>
+      {shouldUseFallback ? (
+        <span
+          ref={textRef}
+          className={cn(
+            "bg-clip-text text-transparent",
+            overlay ? "absolute inset-0" : "inline",
+            className,
+          )}
+          style={{
+            WebkitBackgroundClip: "text",
+            backgroundClip: "text",
+            ...(gradientStops.length > 0 && {
+              backgroundImage: `linear-gradient(to bottom, ${gradientStops.join(", ")})`,
+            }),
+          }}
+        >
+          {text}
+        </span>
+      ) : (
+        <span
+          ref={textRef}
+          className={cn(
+            "bg-clip-text text-transparent",
+            overlay ? "absolute inset-0" : "inline",
+            className,
+          )}
+          style={{
+            WebkitBackgroundClip: "text",
+          }}
+        >
+          {text}
+        </span>
+      )}
     </span>
   );
 }

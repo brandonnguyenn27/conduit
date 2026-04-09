@@ -98,12 +98,14 @@ export function SearchPageContent() {
     <div
       className={cn(
         'relative z-10 flex min-h-[70vh] flex-col items-center gap-8',
-        hasSearched ? 'justify-start py-10' : 'justify-center -translate-y-12'
+        hasSearched
+          ? 'justify-start py-8 md:py-10'
+          : 'justify-center max-md:-translate-y-4 md:-translate-y-10'
       )}
     >
       <motion.h1
         layout
-        className="text-4xl font-bold tracking-tighter md:text-5xl lg:text-7xl"
+        className="w-full max-w-[min(100%,42rem)] px-4 text-center text-4xl font-bold tracking-tighter md:text-5xl lg:text-7xl"
       >
         <AuroraText
           className="font-(family-name:--font-editorial)"

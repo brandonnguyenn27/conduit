@@ -7,31 +7,38 @@ import {
 	useNavigate,
 } from "@tanstack/react-router";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { OnboardingFlowImage } from "@/components/onboarding/OnboardingFlowImage";
-import { ClaimWithPassword } from "@/components/onboarding/steps/claim/ClaimWithPassword";
+import { ClaimWithGoogle } from "@/components/onboarding/steps/claim/ClaimWithGoogle";
 import { IdentityStepEmail } from "@/components/onboarding/steps/identity/IdentityStepEmail";
 import { Step1OrgPassword } from "@/components/onboarding/steps/Step1OrgPassword";
 import { Step3VerifyCode } from "@/components/onboarding/steps/Step3VerifyCode";
 import { BackgroundBeams } from "@/components/ui/background-beams";
 import {
+	getOnboardingAccessStateFn,
 	getPublicOrganizationsListFn,
 	issueClaimCodeFn,
 } from "@/lib/get-organization-data.functions";
 
+const ONBOARDING_RESUME_KEY = "conduit.onboarding.resume.v1";
+const RESUME_MAX_AGE_MS = 14 * 60 * 1000;
+
 export const Route = createFileRoute("/onboarding")({
-	beforeLoad: async (ctx) => {
-		if (ctx.context.isAuthenticated) {
+	beforeLoad: async () => {
+		const [organizations, onboardingAccess] = await Promise.all([
+			getPublicOrganizationsListFn(),
+			getOnboardingAccessStateFn(),
+		]);
+		if (onboardingAccess.isAuthenticated && onboardingAccess.isOnboarded) {
 			throw redirect({ to: "/explore" });
 		}
-		const organizations = await getPublicOrganizationsListFn();
-		return { organizations };
+		return { organizations, onboardingAccess };
 	},
 	component: OnboardingRoute,
 });
 
 function OnboardingRoute() {
-	const { organizations } = Route.useRouteContext();
+	const { organizations, onboardingAccess } = Route.useRouteContext();
 	const navigate = useNavigate();
 	const steps = useMemo(
 		() => [
@@ -43,14 +50,13 @@ function OnboardingRoute() {
 			{
 				id: "identity",
 				title: "Identity Verification",
-				description:
-					"Enter your email to find your profile in your organization.",
+				description: "Continue with Google to verify your organization email.",
 			},
 			{
 				id: "claim",
 				title: "Claim Account",
 				description:
-					"Enter your generated claim code and create your password to finish onboarding.",
+					"Enter the claim code provided by your organization admin to finish onboarding.",
 			},
 		],
 		[],
@@ -70,7 +76,7 @@ function OnboardingRoute() {
 		defaultValues: {
 			organizationId: "",
 			orgPassword: "",
-			email: "",
+			email: onboardingAccess.email ?? "",
 			claimPassword: "",
 		},
 		onSubmit: async () => {},
@@ -78,6 +84,13 @@ function OnboardingRoute() {
 
 	const goPrevious = () => {
 		if (stepIndex === 0) return;
+		if (stepIndex === 1) {
+			try {
+				sessionStorage.removeItem(ONBOARDING_RESUME_KEY);
+			} catch {
+				// ignore
+			}
+		}
 		setDirection(-1);
 		setStepIndex((value) => value - 1);
 	};
@@ -88,6 +101,61 @@ function OnboardingRoute() {
 		setStepIndex(nextStep);
 	};
 
+	const persistOnboardingForOAuth = () => {
+		if (typeof window === "undefined") return;
+		try {
+			sessionStorage.setItem(
+				ONBOARDING_RESUME_KEY,
+				JSON.stringify({
+					savedAt: Date.now(),
+					stepIndex: 1,
+					joinToken,
+					organizationId,
+					draftEmail: draftForm.state.values.email,
+				}),
+			);
+		} catch {
+			// ignore
+		}
+	};
+
+	useEffect(() => {
+		if (typeof window === "undefined") return;
+		try {
+			const raw = sessionStorage.getItem(ONBOARDING_RESUME_KEY);
+			if (!raw) return;
+			const parsed = JSON.parse(raw) as {
+				savedAt?: number;
+				stepIndex?: number;
+				joinToken?: string;
+				organizationId?: string;
+				draftEmail?: string;
+			};
+			if (
+				typeof parsed.savedAt !== "number" ||
+				Date.now() - parsed.savedAt > RESUME_MAX_AGE_MS
+			) {
+				sessionStorage.removeItem(ONBOARDING_RESUME_KEY);
+				return;
+			}
+			if (
+				parsed.stepIndex === 1 &&
+				parsed.joinToken &&
+				parsed.organizationId
+			) {
+				setStepIndex(1);
+				setJoinToken(parsed.joinToken);
+				setOrganizationId(parsed.organizationId as Id<"organizations">);
+				if (parsed.draftEmail) {
+					draftForm.setFieldValue("email", parsed.draftEmail);
+				}
+			}
+		} catch {
+			sessionStorage.removeItem(ONBOARDING_RESUME_KEY);
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- restore onboarding once from sessionStorage after OAuth return
+	}, []);
+
 	const canGoToStep = (index: number) => {
 		if (index === 0) return true;
 		if (index === 1) return !!joinToken && !!organizationId;
@@ -97,15 +165,15 @@ function OnboardingRoute() {
 	};
 
 	return (
-		<main className="relative mx-auto flex min-h-[calc(100vh-3.5rem)] w-full max-w-7xl items-center overflow-hidden px-6 py-10 md:px-8 lg:py-14">
+		<main className="relative mx-auto flex min-h-[calc(100vh-3.5rem)] w-full max-w-7xl items-start overflow-x-hidden px-4 py-6 sm:px-6 md:items-center md:px-8 md:py-10 lg:py-14">
 			<div
 				className="absolute inset-0 mask-[linear-gradient(to_bottom,black_0%,black_70%,transparent_100%)] mask-size-[100%_100%] mask-no-repeat"
 				aria-hidden
 			>
 				<BackgroundBeams />
 			</div>
-			<section className="relative z-10 grid w-full gap-8 md:grid-cols-[1fr_minmax(320px,0.9fr)]">
-				<div className="flex min-h-[560px] flex-col rounded-md border border-border bg-background p-6 md:min-h-[620px] md:p-8 lg:min-h-[680px]">
+			<section className="relative z-10 grid w-full gap-6 md:gap-8 md:grid-cols-[1fr_minmax(320px,0.9fr)]">
+				<div className="flex min-h-0 flex-col rounded-md border border-border bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6 md:min-h-[620px] md:p-8 lg:min-h-[680px]">
 					<div className="mb-6">
 						<p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
 							Onboarding
@@ -121,7 +189,7 @@ function OnboardingRoute() {
 						</Link>
 					</div>
 
-					<div className="relative flex-1 min-h-[320px] overflow-hidden md:min-h-[380px]">
+					<div className="relative flex-1 min-h-[360px] overflow-y-auto overscroll-contain pr-1 md:min-h-[380px]">
 						<AnimatePresence initial={false} custom={direction} mode="wait">
 							<motion.div
 								key={activeStep.id}
@@ -141,7 +209,7 @@ function OnboardingRoute() {
 									duration: shouldReduceMotion ? 0.12 : 0.24,
 									ease: "easeOut",
 								}}
-								className="absolute inset-0 flex flex-col"
+								className="absolute inset-0 flex min-h-full flex-col pb-2"
 							>
 								<p className="text-sm text-muted-foreground">
 									Step {stepIndex + 1} of {steps.length}
@@ -182,37 +250,52 @@ function OnboardingRoute() {
 										/>
 									) : null}
 
-									{stepIndex === 1 ? (
+									{stepIndex === 1 && organizationId ? (
 										<IdentityStepEmail
+											organizationId={organizationId}
 											joinToken={joinToken}
 											savedEmail={draftForm.state.values.email}
 											onDraftChange={(email) => {
 												draftForm.setFieldValue("email", email);
 											}}
-											onResolved={async ({
+											onPersistBeforeOAuth={persistOnboardingForOAuth}
+											onReturningMember={async () => {
+												try {
+													sessionStorage.removeItem(ONBOARDING_RESUME_KEY);
+													sessionStorage.removeItem(
+														"conduit.onboarding.identityError",
+													);
+												} catch {
+													// ignore
+												}
+												void navigate({ to: "/explore" });
+											}}
+											onIdentityVerified={async ({
 												profileId: nextProfileId,
 												email,
 												name,
 											}) => {
-												if (nextProfileId) {
-													const issueCodeResult = await issueClaimCodeFn({
-														data: {
-															joinToken,
-															profileId: nextProfileId,
-														},
-													});
-													if (!issueCodeResult.ok) {
-														throw new Error("Failed to issue claim code");
-													}
-
-													setProfileId(nextProfileId);
-													setResolvedName(name ?? "");
-												} else {
-													setProfileId(null);
-													setResolvedName("");
+												const issueCodeResult = await issueClaimCodeFn({
+													data: {
+														joinToken,
+														profileId: nextProfileId,
+													},
+												});
+												if (!issueCodeResult.ok) {
+													throw new Error("Failed to issue claim code");
 												}
 
+												setProfileId(nextProfileId);
+												setResolvedName(name ?? "");
 												setResolvedEmail(email);
+												try {
+													sessionStorage.removeItem(ONBOARDING_RESUME_KEY);
+													sessionStorage.removeItem(
+														"conduit.onboarding.identityError",
+													);
+												} catch {
+													// ignore
+												}
 												goToStep(2);
 											}}
 										/>
@@ -232,15 +315,11 @@ function OnboardingRoute() {
 									organizationId &&
 									profileId &&
 									emailVerified ? (
-										<ClaimWithPassword
+										<ClaimWithGoogle
 											organizationId={organizationId}
 											profileId={profileId}
 											email={resolvedEmail}
 											name={resolvedName}
-											savedPassword={draftForm.state.values.claimPassword}
-											onDraftChange={(password) => {
-												draftForm.setFieldValue("claimPassword", password);
-											}}
 											onSuccess={() => {
 												void navigate({ to: "/explore" });
 											}}
@@ -256,13 +335,13 @@ function OnboardingRoute() {
 							type="button"
 							onClick={goPrevious}
 							disabled={stepIndex === 0}
-							className="h-9 rounded-md border border-border px-4 text-sm disabled:cursor-not-allowed disabled:opacity-40"
+							className="h-11 min-w-[96px] rounded-md border border-border px-4 text-sm disabled:cursor-not-allowed disabled:opacity-40"
 						>
 							Previous
 						</button>
 					</div>
 
-					<div className="mt-6 flex items-center justify-center gap-2">
+					<div className="mt-6 flex items-center justify-center gap-1 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
 						{steps.map((step, index) => (
 							<button
 								key={step.id}
@@ -273,14 +352,18 @@ function OnboardingRoute() {
 								}}
 								aria-current={index === stepIndex}
 								aria-label={`Go to step ${index + 1}`}
-								className={`h-2.5 w-2.5 rounded-full transition-opacity ${
-									index === stepIndex
-										? "bg-blue-600 opacity-100 dark:bg-blue-500"
-										: canGoToStep(index)
-											? "bg-zinc-400/70 opacity-80"
-											: "bg-zinc-300/60 opacity-40"
-								}`}
-							/>
+								className="flex h-8 w-8 items-center justify-center rounded-full"
+							>
+								<span
+									className={`h-2.5 w-2.5 rounded-full transition-opacity ${
+										index === stepIndex
+											? "bg-blue-600 opacity-100 dark:bg-blue-500"
+											: canGoToStep(index)
+												? "bg-zinc-400/70 opacity-80"
+												: "bg-zinc-300/60 opacity-40"
+									}`}
+								/>
+							</button>
 						))}
 					</div>
 				</div>

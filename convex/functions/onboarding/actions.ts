@@ -34,7 +34,7 @@ type GetProfileByEmailResult =
     }
   | {
       ok: false
-      error: 'NO_MATCHING_EMAIL'
+      error: 'NO_MATCHING_EMAIL' | 'JOIN_SESSION_EXPIRED'
     }
 
 type VerifyClaimCodeResult =
@@ -43,7 +43,10 @@ type VerifyClaimCodeResult =
 
 type IssueClaimCodeResult =
   | { ok: true; expiresAt: number }
-  | { ok: false; error: 'INVALID_TOKEN' | 'PROFILE_NOT_IN_ORGANIZATION' }
+  | {
+      ok: false
+      error: 'INVALID_TOKEN' | 'PROFILE_NOT_IN_ORGANIZATION'
+    }
 
 function decodeBase64(value: string): Uint8Array {
   return Uint8Array.from(Buffer.from(value, 'base64'))
@@ -154,7 +157,7 @@ export const getProfileByEmail = action({
     if (!token || token.expiresAt <= Date.now()) {
       return {
         ok: false,
-        error: 'NO_MATCHING_EMAIL',
+        error: 'JOIN_SESSION_EXPIRED',
       }
     }
 
@@ -237,7 +240,6 @@ export const issueClaimCode = action({
     if (!profile) {
       return { ok: false, error: 'PROFILE_NOT_IN_ORGANIZATION' }
     }
-
     await ctx.runMutation(internal.functions.onboarding.mutations.markUnusedVerificationCodesUsed, {
       profileId: args.profileId,
     })

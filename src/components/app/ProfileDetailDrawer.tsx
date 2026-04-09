@@ -71,8 +71,8 @@ export function ProfileDetailDrawer({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange} direction="right">
-      <DrawerContent className="data-[vaul-drawer-direction=right]:sm:max-w-xl">
-        <DrawerHeader className="bg-background/95 sticky top-0 z-10 border-b p-6 text-left backdrop-blur supports-backdrop-filter:bg-background/80">
+      <DrawerContent className="data-[vaul-drawer-direction=right]:w-full data-[vaul-drawer-direction=right]:sm:max-w-xl">
+        <DrawerHeader className="bg-background/95 sticky top-0 z-10 border-b p-4 text-left backdrop-blur supports-backdrop-filter:bg-background/80 sm:p-6">
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-2">
               <DrawerTitle className="font-(family-name:--font-editorial) text-2xl">
@@ -125,7 +125,7 @@ export function ProfileDetailDrawer({
             ) : null}
           </div>
         </DrawerHeader>
-        <div className="space-y-6 overflow-y-auto px-6 pb-8">
+        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain px-4 pb-[max(2rem,env(safe-area-inset-bottom))] sm:px-6">
           {isLoading ? (
             <ProfileDetailsSkeleton />
           ) : profile ? (

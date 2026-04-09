@@ -1,6 +1,7 @@
 import { internalQuery, query } from '../../_generated/server'
 import type { Doc } from '../../_generated/dataModel'
 import { v } from 'convex/values'
+import { authComponent } from '../../auth'
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase()
@@ -83,6 +84,8 @@ export const getProfileInOrganization = internalQuery({
     return {
       _id: profile._id,
       organizationId: profile.organizationId,
+      email: profile.email,
+      name: profile.name,
     }
   },
 })
@@ -135,5 +138,55 @@ export const listPublicOrganizations = query({
       slug: organization.slug,
       logoUrl: organization.logoUrl,
     }))
+  },
+})
+
+/** True when this user already owns / is fully linked to this org profile (skip claim steps). */
+export const isReturningMemberForOnboardingProfile = query({
+  args: {
+    organizationId: v.id('organizations'),
+    profileId: v.id('profiles'),
+  },
+  handler: async (ctx, args) => {
+    const user = await authComponent.safeGetAuthUser(ctx)
+    if (!user) {
+      return false
+    }
+
+    const profile = await ctx.db.get(args.profileId)
+    if (!profile || profile.organizationId !== args.organizationId) {
+      return false
+    }
+
+    if (profile.claimedByUserId === user._id) {
+      return true
+    }
+
+    const appUser = await ctx.db
+      .query('appUsers')
+      .withIndex('by_better_auth_user', (q) => q.eq('betterAuthUserId', user._id))
+      .unique()
+
+    if (!appUser) {
+      return false
+    }
+    if (appUser.organizationId !== args.organizationId) {
+      return false
+    }
+    if (appUser.profileId !== args.profileId) {
+      return false
+    }
+
+    const defaultOrganization = await ctx.db
+      .query('organizations')
+      .withIndex('by_slug', (q) => q.eq('slug', 'default'))
+      .unique()
+
+    const hasProfile = !!appUser.profileId
+    const isOnboarded = defaultOrganization
+      ? hasProfile && appUser.organizationId !== defaultOrganization._id
+      : hasProfile
+
+    return isOnboarded
   },
 })

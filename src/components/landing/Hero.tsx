@@ -23,16 +23,14 @@ export default function Hero() {
             className="block text-7xl leading-[0.95] font-semibold tracking-tight md:text-8xl lg:text-9xl"
             backgroundClassName="bg-blue-600 dark:bg-blue-700"
             colors={[
-              "rgba(0, 153, 255, 1)",
-              "rgba(0, 153, 255, 0.9)",
-              "rgba(0, 153, 255, 0.8)",
-              "rgba(0, 153, 255, 0.7)",
-              "rgba(0, 153, 255, 0.6)",
-              "rgba(0, 153, 255, 0.5)",
-              "rgba(0, 153, 255, 0.4)",
-              "rgba(0, 153, 255, 0.3)",
-              "rgba(0, 153, 255, 0.2)",
-              "rgba(0, 153, 255, 0.1)",
+              "rgb(29, 78, 216)",
+              "rgb(30, 81, 219)",
+              "rgb(31, 84, 221)",
+              "rgb(32, 87, 224)",
+              "rgb(34, 90, 227)",
+              "rgb(35, 93, 230)",
+              "rgb(36, 96, 232)",
+              "rgb(37, 99, 235)",
             ]}
             lineGap={4}
             animationDuration={20}
