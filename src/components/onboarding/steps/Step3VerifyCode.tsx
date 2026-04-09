@@ -129,13 +129,13 @@ export function Step3VerifyCode({
 				) : null}
 
 				<form.Subscribe
-					selector={(state) => [state.canSubmit, state.isSubmitting]}
+					selector={(state) => [state.values.code, state.isSubmitting] as const}
 				>
-					{([canSubmit, isSubmitting]) => (
+					{([code, isSubmitting]) => (
 						<Button
 							type="submit"
 							className="mt-2 w-full"
-							disabled={!canSubmit || isSubmitting}
+							disabled={code.trim().length !== 4 || isSubmitting}
 						>
 							{isSubmitting ? "Verifying..." : "Verify and continue"}
 						</Button>
