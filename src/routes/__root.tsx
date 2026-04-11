@@ -9,7 +9,6 @@ import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import { ConvexBetterAuthProvider } from '@convex-dev/better-auth/react'
 
-import Header from '../components/Header'
 import TanStackQueryProvider from '../integrations/tanstack-query/root-provider'
 import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
 import { authClient } from '@/lib/auth-client'
@@ -87,7 +86,6 @@ function RootDocument() {
       </head>
       <body>
         <TanStackQueryProvider>
-          <Header />
           <Outlet />
           <TanStackDevtools
             config={{
