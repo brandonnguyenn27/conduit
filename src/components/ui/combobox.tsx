@@ -126,9 +126,13 @@ function ComboboxContent({
   )
 }
 
-function ComboboxList({ className, ...props }: ComboboxPrimitive.List.Props) {
+const ComboboxList = React.forwardRef<
+  React.ElementRef<typeof ComboboxPrimitive.List>,
+  ComboboxPrimitive.List.Props
+>(({ className, ...props }, ref) => {
   return (
     <ComboboxPrimitive.List
+      ref={ref}
       data-slot="combobox-list"
       className={cn(
         "max-h-[min(calc(--spacing(96)---spacing(9)),calc(var(--available-height)---spacing(9)))] scroll-py-1 overflow-y-auto p-1 data-empty:p-0",
@@ -137,7 +141,8 @@ function ComboboxList({ className, ...props }: ComboboxPrimitive.List.Props) {
       {...props}
     />
   )
-}
+})
+ComboboxList.displayName = "ComboboxList"
 
 function ComboboxItem({
   className,
