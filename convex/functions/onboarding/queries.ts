@@ -29,23 +29,6 @@ export const getOnboardingToken = internalQuery({
   },
 })
 
-export const getVerificationCode = internalQuery({
-  args: {
-    profileId: v.id('profiles'),
-    code: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const codes = await ctx.db
-      .query('claimCodes')
-      .withIndex('by_profile', (q) => q.eq('profileId', args.profileId))
-      .collect()
-
-    return codes.find(
-      (c) => c.code === args.code && !c.usedAt && c.expiresAt > Date.now()
-    ) ?? null
-  },
-})
-
 export const getProfileByEmailInOrganization = internalQuery({
   args: {
     organizationId: v.id('organizations'),

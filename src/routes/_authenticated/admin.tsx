@@ -1,27 +1,17 @@
 import { api } from "@convex/_generated/api";
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { type ChangeEvent, type FormEvent, useId, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { getOrganizationDataFn } from "@/lib/get-organization-data.functions";
 import {
 	type LinkedInImportRow,
 	parseLinkedInImportCsvContent,
 } from "@/lib/linkedinImportCsv";
-
-const CLAIM_CODES_LIMIT = 200;
 
 export const Route = createFileRoute("/_authenticated/admin")({
 	loader: async () => {
@@ -43,19 +33,10 @@ type ImportResult = {
 function AdminPage() {
 	const importBatchFieldId = useId();
 	const csvFileInputId = useId();
-	const [now, setNow] = useState(() => Date.now());
 	const [importBatch, setImportBatch] = useState("");
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [submitError, setSubmitError] = useState<string | null>(null);
 	const [importResult, setImportResult] = useState<ImportResult | null>(null);
-
-	const claimCodeRows = useQuery(
-		api.functions.claimCodes.queries.listActiveForAdmin,
-		{
-			now,
-			limit: CLAIM_CODES_LIMIT,
-		},
-	);
 	const createManyForCurrentOrg = useMutation(
 		api.functions.importQueue.mutations.createManyForCurrentOrg,
 	);
@@ -119,56 +100,6 @@ function AdminPage() {
 
 	return (
 		<div className="w-full max-w-6xl space-y-6">
-			<Card>
-				<CardHeader className="flex flex-row items-center justify-between gap-3">
-					<CardTitle className="font-editorial">Claim Code Requests</CardTitle>
-					<Button
-						type="button"
-						variant="outline"
-						onClick={() => setNow(Date.now())}
-						disabled={claimCodeRows === undefined}
-					>
-						Refresh
-					</Button>
-				</CardHeader>
-				<CardContent>
-					<Table>
-						<TableHeader>
-							<TableRow>
-								<TableHead>Requester</TableHead>
-								<TableHead>Claim code</TableHead>
-								<TableHead>Expires</TableHead>
-							</TableRow>
-						</TableHeader>
-						<TableBody>
-							{claimCodeRows === undefined ? (
-								<TableRow>
-									<TableCell colSpan={3} className="text-muted-foreground">
-										Loading claim code requests...
-									</TableCell>
-								</TableRow>
-							) : claimCodeRows.length === 0 ? (
-								<TableRow>
-									<TableCell colSpan={3} className="text-muted-foreground">
-										No active claim code requests.
-									</TableCell>
-								</TableRow>
-							) : (
-								claimCodeRows.map((row) => (
-									<TableRow key={row._id}>
-										<TableCell>{row.requesterName}</TableCell>
-										<TableCell>{row.code}</TableCell>
-										<TableCell>
-											{new Date(row.expiresAt).toLocaleString()}
-										</TableCell>
-									</TableRow>
-								))
-							)}
-						</TableBody>
-					</Table>
-				</CardContent>
-			</Card>
-
 			<Card>
 				<CardHeader>
 					<CardTitle className="font-editorial">

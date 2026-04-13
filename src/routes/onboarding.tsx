@@ -7,21 +7,64 @@ import {
 	useNavigate,
 } from "@tanstack/react-router";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { OnboardingFlowImage } from "@/components/onboarding/OnboardingFlowImage";
 import { ClaimWithGoogle } from "@/components/onboarding/steps/claim/ClaimWithGoogle";
 import { IdentityStepEmail } from "@/components/onboarding/steps/identity/IdentityStepEmail";
 import { Step1OrgPassword } from "@/components/onboarding/steps/Step1OrgPassword";
-import { Step3VerifyCode } from "@/components/onboarding/steps/Step3VerifyCode";
 import { BackgroundBeams } from "@/components/ui/background-beams";
 import {
 	getOnboardingAccessStateFn,
 	getPublicOrganizationsListFn,
-	issueClaimCodeFn,
 } from "@/lib/get-organization-data.functions";
 
 const ONBOARDING_RESUME_KEY = "conduit.onboarding.resume.v1";
 const RESUME_MAX_AGE_MS = 14 * 60 * 1000;
+
+type OnboardingResumeState = {
+	stepIndex: number;
+	joinToken: string;
+	organizationId: Id<"organizations"> | null;
+	draftEmail: string;
+};
+
+function readStoredOnboardingResume(): OnboardingResumeState | null {
+	if (typeof window === "undefined") return null;
+	try {
+		const raw = sessionStorage.getItem(ONBOARDING_RESUME_KEY);
+		if (!raw) return null;
+		const parsed = JSON.parse(raw) as {
+			savedAt?: number;
+			stepIndex?: number;
+			joinToken?: string;
+			organizationId?: string;
+			draftEmail?: string;
+		};
+		if (
+			typeof parsed.savedAt !== "number" ||
+			Date.now() - parsed.savedAt > RESUME_MAX_AGE_MS
+		) {
+			sessionStorage.removeItem(ONBOARDING_RESUME_KEY);
+			return null;
+		}
+		if (
+			parsed.stepIndex !== 1 ||
+			!parsed.joinToken ||
+			!parsed.organizationId
+		) {
+			return null;
+		}
+		return {
+			stepIndex: 1,
+			joinToken: parsed.joinToken,
+			organizationId: parsed.organizationId as Id<"organizations">,
+			draftEmail: parsed.draftEmail ?? "",
+		};
+	} catch {
+		sessionStorage.removeItem(ONBOARDING_RESUME_KEY);
+		return null;
+	}
+}
 
 export const Route = createFileRoute("/onboarding")({
 	beforeLoad: async () => {
@@ -40,6 +83,9 @@ export const Route = createFileRoute("/onboarding")({
 function OnboardingRoute() {
 	const { organizations, onboardingAccess } = Route.useRouteContext();
 	const navigate = useNavigate();
+	const [initialResume] = useState<OnboardingResumeState | null>(() =>
+		readStoredOnboardingResume(),
+	);
 	const steps = useMemo(
 		() => [
 			{
@@ -56,28 +102,27 @@ function OnboardingRoute() {
 				id: "claim",
 				title: "Claim Account",
 				description:
-					"Enter the claim code provided by your organization admin to finish onboarding.",
+					"Confirm the Google account that matches your organization profile to finish onboarding.",
 			},
 		],
 		[],
 	);
-	const [stepIndex, setStepIndex] = useState(0);
+	const [stepIndex, setStepIndex] = useState(initialResume?.stepIndex ?? 0);
 	const [direction, setDirection] = useState(1);
 	const shouldReduceMotion = useReducedMotion();
 	const activeStep = steps[stepIndex];
-	const [joinToken, setJoinToken] = useState("");
-	const [organizationId, setOrganizationId] =
-		useState<Id<"organizations"> | null>(null);
+	const [joinToken, setJoinToken] = useState(initialResume?.joinToken ?? "");
+	const [organizationId, setOrganizationId] = useState<Id<"organizations"> | null>(
+		initialResume?.organizationId ?? null,
+	);
 	const [profileId, setProfileId] = useState<Id<"profiles"> | null>(null);
 	const [resolvedEmail, setResolvedEmail] = useState("");
 	const [resolvedName, setResolvedName] = useState("");
-	const [emailVerified, setEmailVerified] = useState(false);
 	const draftForm = useForm({
 		defaultValues: {
 			organizationId: "",
 			orgPassword: "",
-			email: onboardingAccess.email ?? "",
-			claimPassword: "",
+			email: initialResume?.draftEmail || onboardingAccess.email || "",
 		},
 		onSubmit: async () => {},
 	});
@@ -118,43 +163,6 @@ function OnboardingRoute() {
 			// ignore
 		}
 	};
-
-	useEffect(() => {
-		if (typeof window === "undefined") return;
-		try {
-			const raw = sessionStorage.getItem(ONBOARDING_RESUME_KEY);
-			if (!raw) return;
-			const parsed = JSON.parse(raw) as {
-				savedAt?: number;
-				stepIndex?: number;
-				joinToken?: string;
-				organizationId?: string;
-				draftEmail?: string;
-			};
-			if (
-				typeof parsed.savedAt !== "number" ||
-				Date.now() - parsed.savedAt > RESUME_MAX_AGE_MS
-			) {
-				sessionStorage.removeItem(ONBOARDING_RESUME_KEY);
-				return;
-			}
-			if (
-				parsed.stepIndex === 1 &&
-				parsed.joinToken &&
-				parsed.organizationId
-			) {
-				setStepIndex(1);
-				setJoinToken(parsed.joinToken);
-				setOrganizationId(parsed.organizationId as Id<"organizations">);
-				if (parsed.draftEmail) {
-					draftForm.setFieldValue("email", parsed.draftEmail);
-				}
-			}
-		} catch {
-			sessionStorage.removeItem(ONBOARDING_RESUME_KEY);
-		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps -- restore onboarding once from sessionStorage after OAuth return
-	}, []);
 
 	const canGoToStep = (index: number) => {
 		if (index === 0) return true;
@@ -275,16 +283,6 @@ function OnboardingRoute() {
 												email,
 												name,
 											}) => {
-												const issueCodeResult = await issueClaimCodeFn({
-													data: {
-														joinToken,
-														profileId: nextProfileId,
-													},
-												});
-												if (!issueCodeResult.ok) {
-													throw new Error("Failed to issue claim code");
-												}
-
 												setProfileId(nextProfileId);
 												setResolvedName(name ?? "");
 												setResolvedEmail(email);
@@ -301,20 +299,10 @@ function OnboardingRoute() {
 										/>
 									) : null}
 
-									{stepIndex === 2 && !emailVerified ? (
-										<Step3VerifyCode
-											profileId={profileId}
-											email={resolvedEmail}
-											onVerified={() => {
-												setEmailVerified(true);
-											}}
-										/>
-									) : null}
-
 									{stepIndex === 2 &&
 									organizationId &&
 									profileId &&
-									emailVerified ? (
+								resolvedEmail ? (
 										<ClaimWithGoogle
 											organizationId={organizationId}
 											profileId={profileId}

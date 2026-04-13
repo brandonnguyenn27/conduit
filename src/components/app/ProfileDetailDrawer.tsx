@@ -3,11 +3,13 @@ import type { Id } from '@convex/_generated/dataModel'
 import { SaveProfileButton } from './SaveProfileButton'
 import {
   Drawer,
+  DrawerClose,
   DrawerContent,
   DrawerDescription,
   DrawerHeader,
   DrawerTitle,
 } from '@/components/ui/drawer'
+import { ArrowLeft } from 'lucide-react'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useOrganization } from '@/contexts/OrganizationContext'
@@ -73,7 +75,15 @@ export function ProfileDetailDrawer({
     <Drawer open={open} onOpenChange={onOpenChange} direction="right">
       <DrawerContent className="data-[vaul-drawer-direction=right]:w-full data-[vaul-drawer-direction=right]:sm:max-w-xl">
         <DrawerHeader className="bg-background/95 sticky top-0 z-10 border-b p-4 text-left backdrop-blur supports-backdrop-filter:bg-background/80 sm:p-6">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-2 sm:gap-4">
+            <DrawerClose
+              type="button"
+              aria-label="Back"
+              className="text-muted-foreground hover:text-foreground focus-visible:ring-ring mt-0.5 -ml-1.5 inline-flex size-9 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-hidden sm:hidden"
+            >
+              <ArrowLeft className="size-5" strokeWidth={2.25} />
+            </DrawerClose>
+            <div className="flex min-w-0 flex-1 items-start justify-between gap-4">
             <div className="space-y-2">
               <DrawerTitle className="font-(family-name:--font-editorial) text-2xl">
                 {profile?.name ?? 'Profile details'}
@@ -123,6 +133,7 @@ export function ProfileDetailDrawer({
                 </a>
               </div>
             ) : null}
+            </div>
           </div>
         </DrawerHeader>
         <div className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain px-4 pb-[max(2rem,env(safe-area-inset-bottom))] sm:px-6">

@@ -20,12 +20,29 @@ type AppUserForOnboarding = {
 	organizationId: string;
 	profileId?: string;
 	email: string;
+	isAdmin?: boolean;
 };
 type OnboardingAccessState = {
 	isAuthenticated: boolean;
 	isOnboarded: boolean;
 	email: string | null;
 };
+
+function computeIsOnboarded(
+	appUser: AppUserForOnboarding | null,
+	defaultOrganization: { _id: string } | null,
+): boolean {
+	if (!appUser) {
+		return false;
+	}
+	const hasProfile = !!appUser.profileId;
+	if (!defaultOrganization) {
+		return hasProfile;
+	}
+	return (
+		hasProfile && appUser.organizationId !== defaultOrganization._id
+	);
+}
 
 export const getOrganizationDataFn = createServerFn({ method: "GET" }).handler(
 	async () => {
@@ -36,10 +53,19 @@ export const getOrganizationDataFn = createServerFn({ method: "GET" }).handler(
 		if (!user) {
 			throw redirect({ to: "/login" });
 		}
-		const appUser = await fetchAuthQuery(
-			api.functions.appUsers.queries.getByBetterAuthUserId,
-			{ betterAuthUserId: user._id },
-		);
+		const [appUser, defaultOrganization] = await Promise.all([
+			fetchAuthQuery(api.functions.appUsers.queries.getByBetterAuthUserId, {
+				betterAuthUserId: user._id,
+			}) as Promise<AppUserForOnboarding | null>,
+			fetchAuthQuery(api.functions.organizations.queries.getBySlug, {
+				slug: "default",
+			}) as Promise<{ _id: string } | null>,
+		]);
+
+		if (!computeIsOnboarded(appUser, defaultOrganization)) {
+			throw redirect({ to: "/onboarding" });
+		}
+
 		return {
 			organizationId: appUser?.organizationId ?? null,
 			isAdmin: appUser?.isAdmin === true,
@@ -79,10 +105,7 @@ export const getOnboardingAccessStateFn = createServerFn({
 		};
 	}
 
-	const hasProfile = !!appUser.profileId;
-	const isOnboarded = defaultOrganization
-		? hasProfile && appUser.organizationId !== defaultOrganization._id
-		: hasProfile;
+	const isOnboarded = computeIsOnboarded(appUser, defaultOrganization);
 
 	return {
 		isAuthenticated: true,
@@ -135,30 +158,6 @@ export const getProfileByEmailFn = createServerFn({ method: "POST" })
 			{
 				joinToken: data.joinToken,
 				email: data.email,
-			},
-		);
-	});
-
-export const verifyClaimCodeFn = createServerFn({ method: "POST" })
-	.inputValidator((data: { profileId: string; code: string }) => data)
-	.handler(async ({ data }) => {
-		return await convexPublicClient.action(
-			api.functions.onboarding.actions.verifyClaimCode,
-			{
-				profileId: data.profileId as Doc<"profiles">["_id"],
-				code: data.code,
-			},
-		);
-	});
-
-export const issueClaimCodeFn = createServerFn({ method: "POST" })
-	.inputValidator((data: { joinToken: string; profileId: string }) => data)
-	.handler(async ({ data }) => {
-		return await convexPublicClient.action(
-			api.functions.onboarding.actions.issueClaimCode,
-			{
-				joinToken: data.joinToken,
-				profileId: data.profileId as Doc<"profiles">["_id"],
 			},
 		);
 	});

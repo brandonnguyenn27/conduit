@@ -14,7 +14,7 @@ export function GoogleSignInForm() {
 		try {
 			await authClient.signIn.social({
 				provider: "google",
-				callbackURL: "/explore",
+				callbackURL: "/onboarding",
 			});
 		} catch {
 			setApiError("Google sign in failed. Please try again.");

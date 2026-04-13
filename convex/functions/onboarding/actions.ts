@@ -7,9 +7,6 @@ import { api, internal } from '../../_generated/api'
 import { v } from 'convex/values'
 
 const ONBOARDING_TOKEN_TTL_MS = 15 * 60 * 1000
-const CLAIM_CODE_TTL_MS = 3 * 60 * 60 * 1000
-const CLAIM_CODE_LENGTH = 4
-const CLAIM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 const HASH_PREFIX = 'pbkdf2_sha256'
 const HASH_SEP = '$'
 
@@ -35,17 +32,6 @@ type GetProfileByEmailResult =
   | {
       ok: false
       error: 'NO_MATCHING_EMAIL' | 'JOIN_SESSION_EXPIRED'
-    }
-
-type VerifyClaimCodeResult =
-  | { ok: true }
-  | { ok: false; error: 'INVALID_CODE' | 'EXPIRED' }
-
-type IssueClaimCodeResult =
-  | { ok: true; expiresAt: number }
-  | {
-      ok: false
-      error: 'INVALID_TOKEN' | 'PROFILE_NOT_IN_ORGANIZATION'
     }
 
 function decodeBase64(value: string): Uint8Array {
@@ -77,17 +63,6 @@ async function verifyPbkdf2Hash(password: string, storedHash: string): Promise<b
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase()
 }
-
-function generateClaimCode(): string {
-  const random = randomBytes(CLAIM_CODE_LENGTH)
-  let code = ''
-  for (let index = 0; index < CLAIM_CODE_LENGTH; index += 1) {
-    code += CLAIM_CODE_ALPHABET[random[index] % CLAIM_CODE_ALPHABET.length]
-  }
-  return code
-}
-
-
 
 export const verifyOrgPassword = action({
   args: {
@@ -182,78 +157,6 @@ export const getProfileByEmail = action({
       email: profile.email ?? normalizeEmail(args.email),
       name: profile.name,
     }
-  },
-})
-
-export const verifyClaimCode = action({
-  args: {
-    profileId: v.id('profiles'),
-    code: v.string(),
-  },
-  handler: async (ctx, args): Promise<VerifyClaimCodeResult> => {
-    const record = await ctx.runQuery(
-      internal.functions.onboarding.queries.getVerificationCode,
-      {
-        profileId: args.profileId,
-        code: args.code.trim().toUpperCase(),
-      }
-    )
-
-    if (!record) {
-      return { ok: false, error: 'INVALID_CODE' }
-    }
-
-    if (record.expiresAt <= Date.now()) {
-      return { ok: false, error: 'EXPIRED' }
-    }
-
-    await ctx.runMutation(
-      internal.functions.onboarding.mutations.markVerificationCodeUsed,
-      { id: record._id }
-    )
-
-    return { ok: true }
-  },
-})
-
-export const issueClaimCode = action({
-  args: {
-    joinToken: v.string(),
-    profileId: v.id('profiles'),
-  },
-  handler: async (ctx, args): Promise<IssueClaimCodeResult> => {
-    const token = await ctx.runQuery(internal.functions.onboarding.queries.getOnboardingToken, {
-      token: args.joinToken,
-    })
-
-    if (!token || token.expiresAt <= Date.now()) {
-      return { ok: false, error: 'INVALID_TOKEN' }
-    }
-
-    const profile = await ctx.runQuery(
-      internal.functions.onboarding.queries.getProfileInOrganization,
-      {
-        profileId: args.profileId,
-        organizationId: token.organizationId,
-      }
-    )
-    if (!profile) {
-      return { ok: false, error: 'PROFILE_NOT_IN_ORGANIZATION' }
-    }
-    await ctx.runMutation(internal.functions.onboarding.mutations.markUnusedVerificationCodesUsed, {
-      profileId: args.profileId,
-    })
-
-    const code = generateClaimCode()
-    const expiresAt = Date.now() + CLAIM_CODE_TTL_MS
-    await ctx.runMutation(internal.functions.onboarding.mutations.createVerificationCode, {
-      organizationId: token.organizationId,
-      profileId: args.profileId,
-      code,
-      expiresAt,
-    })
-
-    return { ok: true, expiresAt }
   },
 })
 

@@ -2,7 +2,7 @@ import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { useForm } from "@tanstack/react-form";
 import { useConvex, useQuery } from "convex/react";
-import { useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,18 @@ const NO_PROFILE_MESSAGE =
 
 const JOIN_SESSION_EXPIRED_MESSAGE =
 	"Your organization access from the previous step has expired. Select Previous, enter your organization password again, and continue.";
+
+function readPendingIdentityError(): string {
+	if (typeof window === "undefined") return "";
+	try {
+		const pending = sessionStorage.getItem("conduit.onboarding.identityError");
+		if (!pending) return "";
+		sessionStorage.removeItem("conduit.onboarding.identityError");
+		return pending;
+	} catch {
+		return "";
+	}
+}
 
 type IdentityVerifiedPayload = {
 	profileId: Id<"profiles">;
@@ -43,23 +55,8 @@ export function IdentityStepEmail({
 }: IdentityStepEmailProps) {
 	const convex = useConvex();
 	const user = useQuery(api.auth.getCurrentUser);
-	const [errorMessage, setErrorMessage] = useState("");
+	const [errorMessage, setErrorMessage] = useState(() => readPendingIdentityError());
 	const [isWorking, setIsWorking] = useState(false);
-
-	useEffect(() => {
-		if (typeof window === "undefined") return;
-		try {
-			const pending = sessionStorage.getItem(
-				"conduit.onboarding.identityError",
-			);
-			if (pending) {
-				setErrorMessage(pending);
-				sessionStorage.removeItem("conduit.onboarding.identityError");
-			}
-		} catch {
-			// ignore
-		}
-	}, []);
 
 	const continueWithGoogle = async () => {
 		if (isWorking) return;
@@ -104,14 +101,20 @@ export function IdentityStepEmail({
 					setErrorMessage(JOIN_SESSION_EXPIRED_MESSAGE);
 					return;
 				}
-				if (typeof window !== "undefined") {
-					sessionStorage.setItem(
-						"conduit.onboarding.identityError",
-						NO_PROFILE_MESSAGE,
-					);
+				if (result.error === "NO_MATCHING_EMAIL") {
+					if (typeof window !== "undefined") {
+						sessionStorage.setItem(
+							"conduit.onboarding.identityError",
+							NO_PROFILE_MESSAGE,
+						);
+					}
+					setErrorMessage(NO_PROFILE_MESSAGE);
+					await authClient.signOut();
+					return;
 				}
-				setErrorMessage(NO_PROFILE_MESSAGE);
-				await authClient.signOut();
+				setErrorMessage(
+					"We could not verify your Google account email right now. Please try again.",
+				);
 				return;
 			}
 
