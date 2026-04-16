@@ -1,4 +1,6 @@
 import type { Id } from '@convex/_generated/dataModel'
+import { api } from '@convex/_generated/api'
+import { useMutation } from 'convex/react'
 
 import { SaveProfileButton } from './SaveProfileButton'
 import {
@@ -13,7 +15,6 @@ import { ArrowLeft } from 'lucide-react'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useOrganization } from '@/contexts/OrganizationContext'
-import { useSavedProfileIds } from '@/hooks/use-saved-profile-ids'
 import { groupExperiencesByCompany } from '@/lib/experience'
 
 type DatePart = {
@@ -58,6 +59,8 @@ interface ProfileDetailDrawerProps {
   onOpenChange: (nextOpen: boolean) => void
   profile: ProfileDetails | null | undefined
   isLoading: boolean
+  savedProfileIdSet?: Set<Id<'profiles'>>
+  isSavedProfilesLoading?: boolean
 }
 
 export function ProfileDetailDrawer({
@@ -65,11 +68,14 @@ export function ProfileDetailDrawer({
   onOpenChange,
   profile,
   isLoading,
+  savedProfileIdSet: savedProfileIdSetProp,
+  isSavedProfilesLoading: isSavedProfilesLoadingProp,
 }: ProfileDetailDrawerProps) {
   const organizationId = useOrganization()
-  const { savedProfileIdSet, isLoading: isSavedProfilesLoading } = useSavedProfileIds(
-    organizationId
-  )
+  const savedProfileIdSet = savedProfileIdSetProp ?? new Set<Id<'profiles'>>()
+  const isSavedProfilesLoading = isSavedProfilesLoadingProp ?? false
+  const addSavedProfile = useMutation(api.functions.savedProfiles.mutations.add)
+  const removeSavedProfile = useMutation(api.functions.savedProfiles.mutations.remove)
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange} direction="right">
@@ -118,6 +124,12 @@ export function ProfileDetailDrawer({
                     organizationId={organizationId}
                     saved={savedProfileIdSet.has(profile._id)}
                     loading={isSavedProfilesLoading}
+                    onSave={async ({ profileId, organizationId }) => {
+                      await addSavedProfile({ profileId, organizationId })
+                    }}
+                    onUnsave={async ({ profileId }) => {
+                      await removeSavedProfile({ profileId })
+                    }}
                     className="h-11 w-11"
                     iconClassName="h-5 w-5"
                   />

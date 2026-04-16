@@ -1,4 +1,6 @@
 import type { Id } from "@convex/_generated/dataModel";
+import { api } from "@convex/_generated/api";
+import { useMutation } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { type MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -133,6 +135,8 @@ interface ProfileTableProps {
 	profiles: SearchProfile[];
 	isLoading: boolean;
 	emptyMessage: string;
+	savedProfileIdSet?: Set<Id<"profiles">>;
+	isSavedProfilesLoading?: boolean;
 	/** Must match server page size (Convex numItems). */
 	pageSize?: number;
 	/** When true, pads empty rows to keep table height fixed at pageSize. */
@@ -156,6 +160,8 @@ export function ProfileTable({
 	profiles,
 	isLoading,
 	emptyMessage,
+	savedProfileIdSet: savedProfileIdSetProp,
+	isSavedProfilesLoading: isSavedProfilesLoadingProp,
 	pageSize = 10,
 	padToPageSize = true,
 	totalResults,
@@ -171,8 +177,17 @@ export function ProfileTable({
 	onPageSelect,
 }: ProfileTableProps) {
 	const organizationId = useOrganization();
-	const { savedProfileIdSet, isLoading: isSavedProfilesLoading } =
-		useSavedProfileIds(organizationId);
+	const {
+		savedProfileIdSet: savedProfileIdSetFromQuery,
+		isLoading: isSavedProfilesLoadingFromQuery,
+	} = useSavedProfileIds(organizationId);
+	const savedProfileIdSet = savedProfileIdSetProp ?? savedProfileIdSetFromQuery;
+	const isSavedProfilesLoading =
+		isSavedProfilesLoadingProp ?? isSavedProfilesLoadingFromQuery;
+	const addSavedProfile = useMutation(api.functions.savedProfiles.mutations.add);
+	const removeSavedProfile = useMutation(
+		api.functions.savedProfiles.mutations.remove,
+	);
 	const showEmptyState = !isLoading && profiles.length === 0;
 	const resultsSummary = formatResultsSummary(
 		currentPage,
@@ -305,6 +320,15 @@ export function ProfileTable({
 																organizationId={organizationId}
 																saved={savedProfileIdSet.has(profileId)}
 																loading={isSavedProfilesLoading}
+																onSave={async ({ profileId, organizationId }) => {
+																	await addSavedProfile({
+																		profileId,
+																		organizationId,
+																	});
+																}}
+																onUnsave={async ({ profileId }) => {
+																	await removeSavedProfile({ profileId });
+																}}
 																className="h-9 w-9"
 															/>
 														) : null}

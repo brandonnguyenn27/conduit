@@ -31,7 +31,7 @@ function AuthenticatedLayout() {
         >
           <Link
             to="/"
-            className="justify-self-start text-lg font-semibold tracking-tight"
+            className="hidden justify-self-start text-lg font-semibold tracking-tight sm:block"
           >
             Conduit
           </Link>

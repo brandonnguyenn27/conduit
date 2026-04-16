@@ -36,3 +36,6 @@ coverage
 count.txt
 todos.json
 .cursorrules
+
+# Sole-maintainer onboarding / boot notes
+.dev-onboarding.md

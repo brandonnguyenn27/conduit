@@ -1,11 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useMutation } from 'convex/react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Star } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 
-import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { cn } from '@/lib/utils'
 
@@ -16,6 +14,8 @@ interface SaveProfileButtonProps {
   loading?: boolean
   className?: string
   iconClassName?: string
+  onSave: (args: { profileId: Id<'profiles'>; organizationId: Id<'organizations'> }) => Promise<void>
+  onUnsave: (args: { profileId: Id<'profiles'> }) => Promise<void>
 }
 
 export function SaveProfileButton({
@@ -25,22 +25,14 @@ export function SaveProfileButton({
   loading = false,
   className,
   iconClassName,
+  onSave,
+  onUnsave,
 }: SaveProfileButtonProps) {
-  const [optimisticSaved, setOptimisticSaved] = useState<boolean | null>(null)
   const [isMutating, setIsMutating] = useState(false)
 
-  const addMutation = useMutation(api.functions.savedProfiles.mutations.add)
-  const removeMutation = useMutation(api.functions.savedProfiles.mutations.remove)
   const queryClient = useQueryClient()
 
-  const effectivelySaved = optimisticSaved !== null ? optimisticSaved : saved
   const isLoading = loading || isMutating
-
-  useEffect(() => {
-    if (optimisticSaved !== null && optimisticSaved === saved) {
-      setOptimisticSaved(null)
-    }
-  }, [optimisticSaved, saved])
 
   async function handleToggle(e: React.MouseEvent) {
     e.preventDefault()
@@ -48,22 +40,19 @@ export function SaveProfileButton({
 
     if (isLoading) return
 
-    const nextState = !effectivelySaved
-    setOptimisticSaved(nextState)
     setIsMutating(true)
 
     try {
-      if (nextState) {
-        await addMutation({ profileId, organizationId })
-        toast.success('Profile saved')
-      } else {
-        await removeMutation({ profileId })
+      if (saved) {
+        await onUnsave({ profileId })
         toast.success('Profile removed from saved')
+      } else {
+        await onSave({ profileId, organizationId })
+        toast.success('Profile saved')
       }
       
-      queryClient.invalidateQueries({ queryKey: ['saved-profiles'] })
+      await queryClient.invalidateQueries({ queryKey: ['saved-profiles'] })
     } catch (error) {
-      setOptimisticSaved(null)
       toast.error('Failed to update saved status')
       console.error(error)
     } finally {
@@ -76,17 +65,17 @@ export function SaveProfileButton({
       type="button"
       onClick={handleToggle}
       disabled={isLoading}
-      aria-label={effectivelySaved ? 'Remove from saved profiles' : 'Save profile'}
-      title={effectivelySaved ? 'Remove from saved profiles' : 'Save profile'}
+      aria-label={saved ? 'Remove from saved profiles' : 'Save profile'}
+      title={saved ? 'Remove from saved profiles' : 'Save profile'}
       className={cn(
         'group relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-border/70 transition-colors hover:bg-muted focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
-        effectivelySaved && 'border-yellow-400/50 bg-yellow-400/10 hover:bg-yellow-400/20',
+        saved && 'border-yellow-400/50 bg-yellow-400/10 hover:bg-yellow-400/20',
         className
       )}
     >
       <AnimatePresence mode="wait" initial={false}>
         <motion.div
-          key={effectivelySaved ? 'saved' : 'unsaved'}
+          key={saved ? 'saved' : 'unsaved'}
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.8, opacity: 0 }}
@@ -96,7 +85,7 @@ export function SaveProfileButton({
           <Star
             className={cn(
               'h-4 w-4 transition-colors',
-              effectivelySaved
+              saved
                 ? 'fill-yellow-400 text-yellow-400'
                 : 'text-foreground group-hover:text-foreground/80',
               iconClassName

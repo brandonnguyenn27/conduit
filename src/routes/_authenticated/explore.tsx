@@ -18,9 +18,9 @@ import {
 } from '@/components/ui/select'
 import type { Id } from '@convex/_generated/dataModel'
 import { useOrganization } from '@/contexts/OrganizationContext'
+import { useSavedProfileIds } from '@/hooks/use-saved-profile-ids'
 import { FRATERNITY_CLASS_LABELS, FRATERNITY_FAMILY_LABELS } from '@/lib/fraternityCatalog'
 import { getExploreProfilesFn } from '@/lib/explore.functions'
-import { getOrganizationDataFn } from '@/lib/get-organization-data.functions'
 import { cn } from '@/lib/utils'
 
 type ExploreFilters = {
@@ -30,19 +30,6 @@ type ExploreFilters = {
 }
 
 export const Route = createFileRoute('/_authenticated/explore')({
-  loader: async ({ context }) => {
-    const { organizationId } = await getOrganizationDataFn()
-    if (!organizationId) return
-
-    await context.queryClient.prefetchQuery({
-      queryKey: ['explore-profiles', organizationId, null, {}],
-      queryFn: async () =>
-        await getExploreProfilesFn({
-          data: { organizationId, cursor: null, filters: {} },
-        }),
-      staleTime: 5 * 60 * 1000,
-    })
-  },
   pendingComponent: ExplorePageSkeleton,
   component: ExplorePage,
 })
@@ -51,6 +38,9 @@ const ALL_VALUE = '__all__'
 
 function ExplorePage() {
   const organizationId = useOrganization()
+  const { savedProfileIdSet, isLoading: isSavedProfilesLoading } = useSavedProfileIds(
+    organizationId
+  )
   const getExploreProfiles = useServerFn(getExploreProfilesFn)
   const [selectedProfileId, setSelectedProfileId] = useState<Id<'profiles'> | null>(
     null
@@ -61,6 +51,10 @@ function ExplorePage() {
 
   const [filters, setFilters] = useState<ExploreFilters>({})
 
+  if (!organizationId) {
+    return <ExplorePageSkeleton />
+  }
+
   const currentCursor = cursors[pageIndex]
 
   const {
@@ -69,10 +63,13 @@ function ExplorePage() {
     isFetching,
   } = useSuspenseQuery({
     queryKey: ['explore-profiles', organizationId, currentCursor, filters],
+    staleTime: 5 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
     queryFn: async () =>
       await getExploreProfiles({
         data: {
-          organizationId: organizationId!,
+          organizationId,
           cursor: currentCursor,
           filters,
         },
@@ -227,6 +224,8 @@ function ExplorePage() {
             profiles={paginatedProfiles?.page ?? []}
             isLoading={false}
             emptyMessage="No profiles found matching your filters."
+            savedProfileIdSet={savedProfileIdSet}
+            isSavedProfilesLoading={isSavedProfilesLoading}
             onRefresh={refetch}
             isRefreshing={isFetching || isPending}
             onProfileClick={(id) => setSelectedProfileId(id as Id<'profiles'>)}
@@ -258,6 +257,8 @@ function ExplorePage() {
           }}
           profile={undefined}
           isLoading={false}
+          savedProfileIdSet={savedProfileIdSet}
+          isSavedProfilesLoading={isSavedProfilesLoading}
         />
       )}
     </div>
