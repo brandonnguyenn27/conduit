@@ -12,6 +12,7 @@ import type * as auth from "../auth.js";
 import type * as crons from "../crons.js";
 import type * as functions_appUsers_mutations from "../functions/appUsers/mutations.js";
 import type * as functions_appUsers_queries from "../functions/appUsers/queries.js";
+import type * as functions_facets_apply from "../functions/facets/apply.js";
 import type * as functions_facets_helpers from "../functions/facets/helpers.js";
 import type * as functions_facets_mutations from "../functions/facets/mutations.js";
 import type * as functions_facets_queries from "../functions/facets/queries.js";
@@ -26,6 +27,7 @@ import type * as functions_organizations_queries from "../functions/organization
 import type * as functions_profiles_helpers from "../functions/profiles/helpers.js";
 import type * as functions_profiles_mutations from "../functions/profiles/mutations.js";
 import type * as functions_profiles_queries from "../functions/profiles/queries.js";
+import type * as functions_savedProfiles_helpers from "../functions/savedProfiles/helpers.js";
 import type * as functions_savedProfiles_mutations from "../functions/savedProfiles/mutations.js";
 import type * as functions_savedProfiles_queries from "../functions/savedProfiles/queries.js";
 import type * as http from "../http.js";
@@ -59,6 +61,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   "functions/appUsers/mutations": typeof functions_appUsers_mutations;
   "functions/appUsers/queries": typeof functions_appUsers_queries;
+  "functions/facets/apply": typeof functions_facets_apply;
   "functions/facets/helpers": typeof functions_facets_helpers;
   "functions/facets/mutations": typeof functions_facets_mutations;
   "functions/facets/queries": typeof functions_facets_queries;
@@ -73,6 +76,7 @@ declare const fullApi: ApiFromModules<{
   "functions/profiles/helpers": typeof functions_profiles_helpers;
   "functions/profiles/mutations": typeof functions_profiles_mutations;
   "functions/profiles/queries": typeof functions_profiles_queries;
+  "functions/savedProfiles/helpers": typeof functions_savedProfiles_helpers;
   "functions/savedProfiles/mutations": typeof functions_savedProfiles_mutations;
   "functions/savedProfiles/queries": typeof functions_savedProfiles_queries;
   http: typeof http;

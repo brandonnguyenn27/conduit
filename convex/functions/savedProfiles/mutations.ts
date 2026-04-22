@@ -1,6 +1,7 @@
 import { mutation } from '../../_generated/server'
 import { v } from 'convex/values'
 import { authComponent } from '../../auth'
+import { toSavedProfilePreview } from './helpers'
 
 export const add = mutation({
   args: {
@@ -11,6 +12,11 @@ export const add = mutation({
     const user = await authComponent.safeGetAuthUser(ctx)
     if (!user) {
       throw new Error('Unauthorized')
+    }
+
+    const profile = await ctx.db.get(args.profileId)
+    if (!profile || profile.organizationId !== args.organizationId) {
+      throw new Error('Profile not found')
     }
 
     const existing = await ctx.db
@@ -29,6 +35,7 @@ export const add = mutation({
       userId: user._id,
       profileId: args.profileId,
       organizationId: args.organizationId,
+      ...toSavedProfilePreview(profile),
       createdAt: Date.now(),
     })
   },

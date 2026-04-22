@@ -112,9 +112,10 @@ export const getProfilePreview = query({
 })
 
 export const listPublicOrganizations = query({
-  args: {},
-  handler: async (ctx) => {
-    const organizations = await ctx.db.query('organizations').collect()
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const limit = Math.max(1, Math.min(args.limit ?? 500, 5000))
+    const organizations = await ctx.db.query('organizations').order('desc').take(limit)
     return organizations.map((organization) => ({
       _id: organization._id,
       name: organization.name,

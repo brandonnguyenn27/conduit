@@ -10,14 +10,16 @@ const ROLE_EXACT_RESULTS_THRESHOLD = 10
 const ROLE_SUGGESTED_RESULTS_CAP = 5
 
 export const listByOrganization = query({
-  args: { organizationId: v.id('organizations') },
+  args: { organizationId: v.id('organizations'), limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
+    const limit = Math.max(1, Math.min(args.limit ?? 500, 5000))
     return await ctx.db
       .query('profiles')
       .withIndex('by_organization_linkedin', (q) =>
         q.eq('organizationId', args.organizationId)
       )
-      .collect()
+      .order('desc')
+      .take(limit)
   },
 })
 
@@ -303,20 +305,52 @@ export const listPaginatedForExplore = query({
       throw new Error('Unauthorized')
     }
 
-    // Look up appUser only to get profileId for excluding current user
     const appUser = await ctx.db
       .query('appUsers')
       .withIndex('by_better_auth_user', (q) => q.eq('betterAuthUserId', user._id))
       .unique()
 
+    if (!appUser || appUser.organizationId !== args.organizationId) {
+      throw new Error('Forbidden')
+    }
+
     const filters = args.filters
     const currentUserProfileId = appUser?.profileId
 
-    let profileQuery = ctx.db
-      .query('profiles')
-      .withIndex('by_organization_linkedin', (q) =>
-        q.eq('organizationId', args.organizationId)
-      )
+    type UsedIndex = 'profileType' | 'class' | 'family' | 'linkedin'
+    let usedIndex: UsedIndex = 'linkedin'
+
+    let profileQuery = (() => {
+      if (filters?.profileType) {
+        usedIndex = 'profileType'
+        return ctx.db
+          .query('profiles')
+          .withIndex('by_organization_profileType', (q) =>
+            q.eq('organizationId', args.organizationId).eq('profileType', filters.profileType)
+          )
+      }
+      if (filters?.class) {
+        usedIndex = 'class'
+        return ctx.db
+          .query('profiles')
+          .withIndex('by_organization_class', (q) =>
+            q.eq('organizationId', args.organizationId).eq('class', filters.class)
+          )
+      }
+      if (filters?.family) {
+        usedIndex = 'family'
+        return ctx.db
+          .query('profiles')
+          .withIndex('by_organization_family', (q) =>
+            q.eq('organizationId', args.organizationId).eq('family', filters.family)
+          )
+      }
+      return ctx.db
+        .query('profiles')
+        .withIndex('by_organization_linkedin', (q) =>
+          q.eq('organizationId', args.organizationId)
+        )
+    })()
 
     if (currentUserProfileId) {
       profileQuery = profileQuery.filter((q) =>
@@ -324,15 +358,15 @@ export const listPaginatedForExplore = query({
       )
     }
 
-    if (filters?.profileType) {
+    if (filters?.profileType && usedIndex !== 'profileType') {
       profileQuery = profileQuery.filter((q) =>
         q.eq(q.field('profileType'), filters.profileType)
       )
     }
-    if (filters?.class) {
+    if (filters?.class && usedIndex !== 'class') {
       profileQuery = profileQuery.filter((q) => q.eq(q.field('class'), filters.class))
     }
-    if (filters?.family) {
+    if (filters?.family && usedIndex !== 'family') {
       profileQuery = profileQuery.filter((q) => q.eq(q.field('family'), filters.family))
     }
 

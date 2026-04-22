@@ -1,6 +1,5 @@
 import type { Id } from '../../_generated/dataModel'
 import { internalMutation, mutation } from '../../_generated/server'
-import { internal } from '../../_generated/api'
 import { v } from 'convex/values'
 import { deriveCurrentExperienceFromStored } from '../../lib/profiles/deriveCurrentExperience'
 import {
@@ -19,6 +18,12 @@ import {
   toSuggestSearchText,
 } from './helpers'
 import { extractFacetTokens } from '../facets/helpers'
+import { applyProfileFacetChanges } from '../facets/apply'
+import {
+  deleteSavedProfilesForProfile,
+  syncSavedProfilePreviewsForProfile,
+  toSavedProfilePreview,
+} from '../savedProfiles/helpers'
 
 const EMPTY_TOKENS = {
   companies: [] as string[],
@@ -56,8 +61,9 @@ export const create = mutation({
       pastJobTitlesSearchSlug: toPastJobTitlesSearchSlugFromExperience(args.experience),
     }
     const id = await ctx.db.insert('profiles', doc)
+    await syncSavedProfilePreviewsForProfile(ctx, { profileId: id, preview: toSavedProfilePreview(doc) })
     const newTokens = extractFacetTokens(doc)
-    await ctx.scheduler.runAfter(0, internal.functions.facets.mutations.applyProfileFacetChanges, {
+    await applyProfileFacetChanges(ctx, {
       organizationId: args.organizationId,
       oldTokens: EMPTY_TOKENS,
       newTokens,
@@ -129,8 +135,12 @@ export const update = mutation({
     await ctx.db.patch(id, patchDoc)
     const updated = await ctx.db.get(id)
     if (updated) {
+      await syncSavedProfilePreviewsForProfile(ctx, {
+        profileId: updated._id,
+        preview: toSavedProfilePreview(updated),
+      })
       const newTokens = extractFacetTokens(updated)
-      await ctx.scheduler.runAfter(0, internal.functions.facets.mutations.applyProfileFacetChanges, {
+      await applyProfileFacetChanges(ctx, {
         organizationId: current.organizationId,
         oldTokens,
         newTokens,
@@ -147,7 +157,8 @@ export const remove = mutation({
     if (doc) {
       const oldTokens = extractFacetTokens(doc)
       await ctx.db.delete(args.id)
-      await ctx.scheduler.runAfter(0, internal.functions.facets.mutations.applyProfileFacetChanges, {
+      await deleteSavedProfilesForProfile(ctx, args.id)
+      await applyProfileFacetChanges(ctx, {
         organizationId: doc.organizationId,
         oldTokens,
         newTokens: EMPTY_TOKENS,
@@ -206,8 +217,12 @@ export const upsertFromImport = mutation({
     }
     const saved = await ctx.db.get(profileId)
     if (saved) {
+      await syncSavedProfilePreviewsForProfile(ctx, {
+        profileId: saved._id,
+        preview: toSavedProfilePreview(saved),
+      })
       const newTokens = extractFacetTokens(saved)
-      await ctx.scheduler.runAfter(0, internal.functions.facets.mutations.applyProfileFacetChanges, {
+      await applyProfileFacetChanges(ctx, {
         organizationId: args.organizationId,
         oldTokens,
         newTokens,

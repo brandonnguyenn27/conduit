@@ -69,6 +69,9 @@ export default defineSchema({
     email: v.optional(v.string()),
   })
     .index('by_organization_linkedin', ['organizationId', 'linkedInUrl'])
+    .index('by_organization_profileType', ['organizationId', 'profileType'])
+    .index('by_organization_class', ['organizationId', 'class'])
+    .index('by_organization_family', ['organizationId', 'family'])
     .index('by_organization_claimed', ['organizationId', 'claimedByUserId'])
     .index('by_organization_email', ['organizationId', 'email'])
     .searchIndex('by_suggest_search', {
@@ -126,6 +129,8 @@ export default defineSchema({
     errorMessage: v.optional(v.string()),
   })
     .index('by_status', ['status'])
+    .index('by_status_createdAt', ['status', 'createdAt'])
+    .index('by_status_organizationId', ['status', 'organizationId'])
     .index('by_organization', ['organizationId']),
 
   organizationFacetValues: defineTable({
@@ -168,10 +173,15 @@ export default defineSchema({
     userId: v.string(),
     profileId: v.id('profiles'),
     organizationId: v.id('organizations'),
+    previewName: v.string(),
+    previewHeadline: v.string(),
+    previewCurrentCompany: v.string(),
+    previewLinkedInUrl: v.string(),
     createdAt: v.number(),
   })
     .index('by_user_org', ['userId', 'organizationId'])
     .index('by_user_profile', ['userId', 'profileId'])
     .index('by_user_org_profile', ['userId', 'organizationId', 'profileId'])
+    .index('by_organization_createdAt', ['organizationId', 'createdAt'])
     .index('by_profile', ['profileId']),
 })

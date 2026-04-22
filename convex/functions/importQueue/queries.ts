@@ -12,16 +12,6 @@ export const listPending = query({
   },
 })
 
-export const listByOrganization = query({
-  args: { organizationId: v.id('organizations') },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query('importQueue')
-      .withIndex('by_organization', (q) => q.eq('organizationId', args.organizationId))
-      .collect()
-  },
-})
-
 export const get = query({
   args: { id: v.id('importQueue') },
   handler: async (ctx, args) => {

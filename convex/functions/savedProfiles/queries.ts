@@ -42,23 +42,15 @@ export const listPopulatedByUserAndOrg = query({
       .order('desc')
       .paginate(args.paginationOpts)
 
-    const profiles = []
-    for (const saved of savedRecordsResult.page) {
-      const profileInfo = await ctx.db.get(saved.profileId)
-      if (profileInfo) {
-        profiles.push({
-          _id: profileInfo._id,
-          name: profileInfo.name,
-          headline: profileInfo.currentExperience?.title || '',
-          currentCompany: profileInfo.currentExperience?.companyName || profileInfo.currentCompany,
-          linkedInUrl: profileInfo.linkedInUrl,
-        })
-      }
-    }
-
     return {
       ...savedRecordsResult,
-      page: profiles,
+      page: savedRecordsResult.page.map((saved) => ({
+        _id: saved.profileId,
+        name: saved.previewName,
+        headline: saved.previewHeadline,
+        currentCompany: saved.previewCurrentCompany,
+        linkedInUrl: saved.previewLinkedInUrl,
+      })),
     }
   },
 })
@@ -99,7 +91,7 @@ export const listSavedProfileIdsByUserAndOrg = query({
       .withIndex('by_user_org', (q) =>
         q.eq('userId', user._id).eq('organizationId', args.organizationId)
       )
-      .collect()
+      .take(5000)
 
     return savedProfiles.map((saved) => saved.profileId)
   },

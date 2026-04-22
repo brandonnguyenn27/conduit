@@ -283,21 +283,27 @@ export const pruneFinishedOlderThan = mutation({
   handler: async (ctx, args) => {
     const days = args.retentionDays ?? 7
     const cutoff = Date.now() - days * 24 * 60 * 60 * 1000
-    const done = await ctx.db
-      .query('importQueue')
-      .withIndex('by_status', (q) => q.eq('status', 'done'))
-      .collect()
-    const failed = await ctx.db
-      .query('importQueue')
-      .withIndex('by_status', (q) => q.eq('status', 'failed'))
-      .collect()
+    const BATCH = 200
     let deleted = 0
-    for (const row of [...done, ...failed]) {
-      if (row.createdAt < cutoff) {
-        await ctx.db.delete(row._id)
-        deleted++
+
+    async function pruneStatus(status: 'done' | 'failed') {
+      while (true) {
+        const batch = await ctx.db
+          .query('importQueue')
+          .withIndex('by_status_createdAt', (q) =>
+            q.eq('status', status).lt('createdAt', cutoff)
+          )
+          .take(BATCH)
+        if (batch.length === 0) return
+        for (const row of batch) {
+          await ctx.db.delete(row._id)
+          deleted += 1
+        }
       }
     }
+
+    await pruneStatus('done')
+    await pruneStatus('failed')
     return deleted
   },
 })
@@ -306,14 +312,32 @@ export const pruneFinishedOlderThan = mutation({
 export const resetStuckProcessing = mutation({
   args: { organizationId: v.optional(v.id('organizations')) },
   handler: async (ctx, args) => {
-    const all = await ctx.db.query('importQueue').collect()
-    const stuck = args.organizationId
-      ? all.filter((r) => r.status === 'processing' && r.organizationId === args.organizationId)
-      : all.filter((r) => r.status === 'processing')
-    for (const row of stuck) {
-      await ctx.db.patch(row._id, { status: 'pending', errorMessage: undefined })
+    const BATCH = 200
+    let updated = 0
+
+    while (true) {
+      const batch = args.organizationId
+        ? await ctx.db
+            .query('importQueue')
+            .withIndex('by_status_organizationId', (q) =>
+              q
+                .eq('status', 'processing')
+                .eq('organizationId', args.organizationId!)
+            )
+            .take(BATCH)
+        : await ctx.db
+            .query('importQueue')
+            .withIndex('by_status', (q) => q.eq('status', 'processing'))
+            .take(BATCH)
+
+      if (batch.length === 0) break
+      for (const row of batch) {
+        await ctx.db.patch(row._id, { status: 'pending', errorMessage: undefined })
+        updated += 1
+      }
     }
-    return stuck.length
+
+    return updated
   },
 })
 
@@ -321,26 +345,36 @@ export const resetStuckProcessing = mutation({
 export const retryFailed = mutation({
   args: { organizationId: v.optional(v.id('organizations')) },
   handler: async (ctx, args) => {
-    const failed = await ctx.db
-      .query('importQueue')
-      .withIndex('by_status', (q) => q.eq('status', 'failed'))
-      .collect()
+    const BATCH = 200
+    let updated = 0
 
-    const toRetry = args.organizationId
-      ? failed.filter((row) => row.organizationId === args.organizationId)
-      : failed
+    while (true) {
+      const batch = args.organizationId
+        ? await ctx.db
+            .query('importQueue')
+            .withIndex('by_status_organizationId', (q) =>
+              q.eq('status', 'failed').eq('organizationId', args.organizationId!)
+            )
+            .take(BATCH)
+        : await ctx.db
+            .query('importQueue')
+            .withIndex('by_status', (q) => q.eq('status', 'failed'))
+            .take(BATCH)
 
-    for (const row of toRetry) {
-      await ctx.db.patch(row._id, { status: 'pending', errorMessage: undefined })
+      if (batch.length === 0) break
+      for (const row of batch) {
+        await ctx.db.patch(row._id, { status: 'pending', errorMessage: undefined })
+        updated += 1
+      }
     }
 
-    if (toRetry.length > 0) {
+    if (updated > 0) {
       await ctx.scheduler.runAfter(PIPELINE_INITIAL_RUN_AFTER_MS, api.importPipeline.processImportQueue, {
         limit: PIPELINE_BATCH_SIZE,
       })
     }
 
-    return toRetry.length
+    return updated
   },
 })
 
