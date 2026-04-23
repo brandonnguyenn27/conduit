@@ -1,5 +1,5 @@
 import { api } from "@convex/_generated/api";
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { Link, createFileRoute, redirect, useLoaderData } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
 import { type ChangeEvent, type FormEvent, useId, useState } from "react";
 
@@ -7,15 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { getOrganizationDataFn } from "@/lib/get-organization-data.functions";
+import { ensureOrganizationData } from "@/lib/get-organization-data.functions";
 import {
 	type LinkedInImportRow,
 	parseLinkedInImportCsvContent,
 } from "@/lib/linkedinImportCsv";
 
 export const Route = createFileRoute("/_authenticated/admin")({
-	loader: async () => {
-		const { isAdmin } = await getOrganizationDataFn();
+	loader: async ({ context }) => {
+		const { isAdmin } = await ensureOrganizationData(context.queryClient);
 		if (!isAdmin) {
 			throw redirect({ to: "/explore" });
 		}
@@ -31,6 +31,7 @@ type ImportResult = {
 };
 
 function AdminPage() {
+	const { isAdmin } = useLoaderData({ from: "/_authenticated" });
 	const importBatchFieldId = useId();
 	const csvFileInputId = useId();
 	const [importBatch, setImportBatch] = useState("");
@@ -40,6 +41,20 @@ function AdminPage() {
 	const createManyForCurrentOrg = useMutation(
 		api.functions.importQueue.mutations.createManyForCurrentOrg,
 	);
+
+	if (!isAdmin) {
+		return (
+			<div className="w-full max-w-4xl space-y-2">
+				<h1 className="text-xl font-semibold tracking-tight">Admin</h1>
+				<p className="text-sm text-muted-foreground">
+					You don&apos;t have access to this page.
+				</p>
+				<Link to="/explore" className="text-sm underline underline-offset-4">
+					Go back to Explore
+				</Link>
+			</div>
+		);
+	}
 
 	const onCsvFile = (event: ChangeEvent<HTMLInputElement>) => {
 		const file = event.target.files?.[0];

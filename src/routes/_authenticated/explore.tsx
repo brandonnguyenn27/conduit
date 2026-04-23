@@ -1,7 +1,7 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
-import { useState, useTransition } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 
 import { ExplorePageSkeleton } from '@/components/app/ExplorePageSkeleton'
 import { ProfileDetailDrawer } from '@/components/app/ProfileDetailDrawer'
@@ -18,9 +18,10 @@ import {
 } from '@/components/ui/select'
 import type { Id } from '@convex/_generated/dataModel'
 import { useOrganization } from '@/contexts/OrganizationContext'
-import { useSavedProfileIds } from '@/hooks/use-saved-profile-ids'
 import { FRATERNITY_CLASS_LABELS, FRATERNITY_FAMILY_LABELS } from '@/lib/fraternityCatalog'
 import { getExploreProfilesFn } from '@/lib/explore.functions'
+import { ensureOrganizationData } from '@/lib/get-organization-data.functions'
+import { useCursorPagination } from '@/lib/use-cursor-pagination'
 import { cn } from '@/lib/utils'
 
 type ExploreFilters = {
@@ -30,6 +31,18 @@ type ExploreFilters = {
 }
 
 export const Route = createFileRoute('/_authenticated/explore')({
+  loader: async ({ context }) => {
+    const { organizationId } = await ensureOrganizationData(context.queryClient)
+    if (!organizationId) return
+    await context.queryClient.prefetchQuery({
+      queryKey: ['explore-profiles', organizationId, null, '', '', ''],
+      queryFn: async () =>
+        await getExploreProfilesFn({
+          data: { organizationId, cursor: null, filters: {} },
+        }),
+      staleTime: 5 * 60 * 1000,
+    })
+  },
   pendingComponent: ExplorePageSkeleton,
   component: ExplorePage,
 })
@@ -38,16 +51,14 @@ const ALL_VALUE = '__all__'
 
 function ExplorePage() {
   const organizationId = useOrganization()
-  const { savedProfileIdSet, isLoading: isSavedProfilesLoading } = useSavedProfileIds(
-    organizationId
-  )
   const getExploreProfiles = useServerFn(getExploreProfilesFn)
   const [selectedProfileId, setSelectedProfileId] = useState<Id<'profiles'> | null>(
     null
   )
-  const [cursors, setCursors] = useState<(string | null)[]>([null])
-  const [pageIndex, setPageIndex] = useState(0)
   const [isPending, startTransition] = useTransition()
+
+  const { cursors, pageIndex, currentCursor, reset, nextPage, prevPage, selectPage } =
+    useCursorPagination()
 
   const [filters, setFilters] = useState<ExploreFilters>({})
 
@@ -55,14 +66,17 @@ function ExplorePage() {
     return <ExplorePageSkeleton />
   }
 
-  const currentCursor = cursors[pageIndex]
+  const filtersKey = useMemo(
+    () => [filters.profileType ?? '', filters.class ?? '', filters.family ?? ''] as const,
+    [filters.profileType, filters.class, filters.family]
+  )
 
   const {
     data: paginatedProfiles,
     refetch,
     isFetching,
   } = useSuspenseQuery({
-    queryKey: ['explore-profiles', organizationId, currentCursor, filters],
+    queryKey: ['explore-profiles', organizationId, currentCursor, ...filtersKey],
     staleTime: 5 * 60 * 1000,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
@@ -76,35 +90,20 @@ function ExplorePage() {
       }),
   })
 
+  const savedProfileIdSet = useMemo(() => {
+    return new Set(paginatedProfiles?.savedProfileIds ?? [])
+  }, [paginatedProfiles?.savedProfileIds])
+
   const handleNextPage = () => {
-    if (paginatedProfiles && !paginatedProfiles.isDone) {
-      startTransition(() => {
-        if (cursors.length <= pageIndex + 1) {
-          setCursors((prev) => {
-            const next = [...prev]
-            next[pageIndex + 1] = paginatedProfiles.continueCursor
-            return next
-          })
-        }
-        setPageIndex((prev) => prev + 1)
-      })
-    }
+    startTransition(() => nextPage(paginatedProfiles))
   }
 
   const handlePrevPage = () => {
-    if (pageIndex > 0) {
-      startTransition(() => {
-        setPageIndex((prev) => prev - 1)
-      })
-    }
+    startTransition(prevPage)
   }
 
   const handlePageSelect = (targetPageIndex: number) => {
-    if (targetPageIndex >= 0 && targetPageIndex < cursors.length) {
-      startTransition(() => {
-        setPageIndex(targetPageIndex)
-      })
-    }
+    startTransition(() => selectPage(targetPageIndex))
   }
 
   const handleFilterChange = (key: keyof ExploreFilters, value: string) => {
@@ -123,8 +122,7 @@ function ExplorePage() {
         return next
       })
       // Reset pagination when filters change
-      setCursors([null])
-      setPageIndex(0)
+      reset()
     })
   }
 
@@ -208,8 +206,7 @@ function ExplorePage() {
                 onClick={() => {
                   startTransition(() => {
                     setFilters({})
-                    setCursors([null])
-                    setPageIndex(0)
+                    reset()
                   })
                 }}
                 className="text-sm text-muted-foreground underline hover:text-foreground"
@@ -225,7 +222,7 @@ function ExplorePage() {
             isLoading={false}
             emptyMessage="No profiles found matching your filters."
             savedProfileIdSet={savedProfileIdSet}
-            isSavedProfilesLoading={isSavedProfilesLoading}
+            isSavedProfilesLoading={false}
             onRefresh={refetch}
             isRefreshing={isFetching || isPending}
             onProfileClick={(id) => setSelectedProfileId(id as Id<'profiles'>)}
@@ -258,7 +255,7 @@ function ExplorePage() {
           profile={undefined}
           isLoading={false}
           savedProfileIdSet={savedProfileIdSet}
-          isSavedProfilesLoading={isSavedProfilesLoading}
+          isSavedProfilesLoading={false}
         />
       )}
     </div>

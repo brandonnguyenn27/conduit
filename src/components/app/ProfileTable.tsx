@@ -177,10 +177,11 @@ export function ProfileTable({
 	onPageSelect,
 }: ProfileTableProps) {
 	const organizationId = useOrganization();
+	const shouldFetchSavedProfileIds = savedProfileIdSetProp === undefined;
 	const {
 		savedProfileIdSet: savedProfileIdSetFromQuery,
 		isLoading: isSavedProfilesLoadingFromQuery,
-	} = useSavedProfileIds(organizationId);
+	} = useSavedProfileIds(shouldFetchSavedProfileIds ? organizationId : null);
 	const savedProfileIdSet = savedProfileIdSetProp ?? savedProfileIdSetFromQuery;
 	const isSavedProfilesLoading =
 		isSavedProfilesLoadingProp ?? isSavedProfilesLoadingFromQuery;

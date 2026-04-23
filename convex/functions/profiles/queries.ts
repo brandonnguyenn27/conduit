@@ -389,3 +389,128 @@ export const listPaginatedForExplore = query({
     }
   },
 })
+
+const exploreProfileValidator = v.object({
+  _id: v.id('profiles'),
+  name: v.string(),
+  headline: v.string(),
+  currentCompany: v.optional(v.string()),
+  linkedInUrl: v.string(),
+  industry: v.optional(v.string()),
+  major: v.optional(v.string()),
+  profileType: v.optional(v.union(v.literal('alumni'), v.literal('member'))),
+  class: v.optional(v.string()),
+  family: v.optional(v.string()),
+})
+
+export const listPaginatedForExploreWithSavedProfileIds = query({
+  args: {
+    organizationId: v.id('organizations'),
+    paginationOpts: paginationOptsValidator,
+    filters: v.optional(
+      v.object({
+        profileType: v.optional(v.union(v.literal('alumni'), v.literal('member'))),
+        class: v.optional(v.string()),
+        family: v.optional(v.string()),
+      })
+    ),
+  },
+  returns: v.object({
+    page: v.array(exploreProfileValidator),
+    isDone: v.boolean(),
+    continueCursor: v.union(v.string(), v.null()),
+    savedProfileIds: v.array(v.id('profiles')),
+  }),
+  handler: async (ctx, args) => {
+    const user = await authComponent.safeGetAuthUser(ctx)
+    if (!user) {
+      throw new Error('Unauthorized')
+    }
+
+    const appUser = await ctx.db
+      .query('appUsers')
+      .withIndex('by_better_auth_user', (q) => q.eq('betterAuthUserId', user._id))
+      .unique()
+
+    if (!appUser || appUser.organizationId !== args.organizationId) {
+      throw new Error('Forbidden')
+    }
+
+    const saved = await ctx.db
+      .query('savedProfiles')
+      .withIndex('by_user_org', (q) =>
+        q.eq('userId', user._id).eq('organizationId', args.organizationId)
+      )
+      .collect()
+
+    const filters = args.filters
+    const currentUserProfileId = appUser.profileId
+
+    type UsedIndex = 'profileType' | 'class' | 'family' | 'linkedin'
+    let usedIndex: UsedIndex = 'linkedin'
+
+    let profileQuery = (() => {
+      if (filters?.profileType) {
+        usedIndex = 'profileType'
+        return ctx.db
+          .query('profiles')
+          .withIndex('by_organization_profileType', (q) =>
+            q.eq('organizationId', args.organizationId).eq('profileType', filters.profileType)
+          )
+      }
+      if (filters?.class) {
+        usedIndex = 'class'
+        return ctx.db
+          .query('profiles')
+          .withIndex('by_organization_class', (q) =>
+            q.eq('organizationId', args.organizationId).eq('class', filters.class)
+          )
+      }
+      if (filters?.family) {
+        usedIndex = 'family'
+        return ctx.db
+          .query('profiles')
+          .withIndex('by_organization_family', (q) =>
+            q.eq('organizationId', args.organizationId).eq('family', filters.family)
+          )
+      }
+      return ctx.db
+        .query('profiles')
+        .withIndex('by_organization_linkedin', (q) => q.eq('organizationId', args.organizationId))
+    })()
+
+    if (currentUserProfileId) {
+      profileQuery = profileQuery.filter((q) => q.neq(q.field('_id'), currentUserProfileId))
+    }
+
+    if (filters?.profileType && usedIndex !== 'profileType') {
+      profileQuery = profileQuery.filter((q) => q.eq(q.field('profileType'), filters.profileType))
+    }
+    if (filters?.class && usedIndex !== 'class') {
+      profileQuery = profileQuery.filter((q) => q.eq(q.field('class'), filters.class))
+    }
+    if (filters?.family && usedIndex !== 'family') {
+      profileQuery = profileQuery.filter((q) => q.eq(q.field('family'), filters.family))
+    }
+
+    const result = await profileQuery.order('desc').paginate(args.paginationOpts)
+
+    return {
+      isDone: result.isDone,
+      continueCursor: result.continueCursor,
+      savedProfileIds: saved.map((row) => row.profileId),
+      page: result.page.map((profile) => ({
+        _id: profile._id,
+        name: profile.name,
+        headline: profile.currentExperience?.title || '',
+        currentCompany: profile.currentExperience?.companyName || profile.currentCompany,
+        linkedInUrl: profile.linkedInUrl,
+        industry: profile.industry,
+        major: profile.majors[0],
+        profileType: profile.profileType,
+        class: profile.class,
+        family: profile.family,
+      })),
+    }
+  },
+})

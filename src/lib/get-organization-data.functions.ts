@@ -1,9 +1,10 @@
 import { api } from "@convex/_generated/api";
-import type { Doc } from "@convex/_generated/dataModel";
+import type { Doc, Id } from "@convex/_generated/dataModel";
 import { redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { ConvexHttpClient } from "convex/browser";
 import { fetchAuthQuery } from "@/lib/auth.server";
+import type { QueryClient } from "@tanstack/react-query";
 
 type PublicOrganization = {
 	_id: Doc<"organizations">["_id"];
@@ -15,102 +16,80 @@ type PublicOrganization = {
 	createdAt: number;
 };
 
-type AuthUser = { _id: string; email?: string; name?: string | null };
-type AppUserForOnboarding = {
-	organizationId: string;
-	profileId?: string;
-	email: string;
-	isAdmin?: boolean;
-};
 type OnboardingAccessState = {
 	isAuthenticated: boolean;
 	isOnboarded: boolean;
 	email: string | null;
 };
 
-function computeIsOnboarded(
-	appUser: AppUserForOnboarding | null,
-	defaultOrganization: { _id: string } | null,
-): boolean {
-	if (!appUser) {
-		return false;
-	}
-	const hasProfile = !!appUser.profileId;
-	if (!defaultOrganization) {
-		return hasProfile;
-	}
-	return (
-		hasProfile && appUser.organizationId !== defaultOrganization._id
-	);
-}
+type AuthenticatedLayoutData =
+	| { state: "unauthenticated" }
+	| { state: "needsOnboarding"; email: string | null }
+	| {
+			state: "ok";
+			organizationId: Id<"organizations">;
+			isAdmin: boolean;
+			email: string | null;
+	  };
 
 export const getOrganizationDataFn = createServerFn({ method: "GET" }).handler(
 	async () => {
-		const user = (await fetchAuthQuery(
-			api.auth.getCurrentUser,
+		const layout = (await fetchAuthQuery(
+			api.functions.viewer.queries.getAuthenticatedLayoutData,
 			{},
-		)) as AuthUser | null;
-		if (!user) {
+		)) as AuthenticatedLayoutData;
+
+		if (layout.state === "unauthenticated") {
 			throw redirect({ to: "/login" });
 		}
-		const [appUser, defaultOrganization] = await Promise.all([
-			fetchAuthQuery(api.functions.appUsers.queries.getByBetterAuthUserId, {
-				betterAuthUserId: user._id,
-			}) as Promise<AppUserForOnboarding | null>,
-			fetchAuthQuery(api.functions.organizations.queries.getBySlug, {
-				slug: "default",
-			}) as Promise<{ _id: string } | null>,
-		]);
-
-		if (!computeIsOnboarded(appUser, defaultOrganization)) {
+		if (layout.state === "needsOnboarding") {
 			throw redirect({ to: "/onboarding" });
 		}
 
 		return {
-			organizationId: appUser?.organizationId ?? null,
-			isAdmin: appUser?.isAdmin === true,
+			organizationId: layout.organizationId ?? null,
+			isAdmin: layout.isAdmin === true,
 		};
 	},
 );
 
+export const organizationDataQueryKey = ["organization-data"] as const;
+
+export async function ensureOrganizationData(queryClient: QueryClient) {
+	return await queryClient.ensureQueryData({
+		queryKey: organizationDataQueryKey,
+		queryFn: async () => await getOrganizationDataFn(),
+		staleTime: 5 * 60 * 1000,
+	});
+}
+
 export const getOnboardingAccessStateFn = createServerFn({
 	method: "GET",
 }).handler(async (): Promise<OnboardingAccessState> => {
-	const user = (await fetchAuthQuery(
-		api.auth.getCurrentUser,
+	const layout = (await fetchAuthQuery(
+		api.functions.viewer.queries.getAuthenticatedLayoutData,
 		{},
-	)) as AuthUser | null;
-	if (!user) {
+	)) as AuthenticatedLayoutData;
+
+	if (layout.state === "unauthenticated") {
 		return {
 			isAuthenticated: false,
 			isOnboarded: false,
 			email: null,
 		};
 	}
-
-	const [appUser, defaultOrganization] = await Promise.all([
-		fetchAuthQuery(api.functions.appUsers.queries.getByBetterAuthUserId, {
-			betterAuthUserId: user._id,
-		}) as Promise<AppUserForOnboarding | null>,
-		fetchAuthQuery(api.functions.organizations.queries.getBySlug, {
-			slug: "default",
-		}) as Promise<{ _id: string } | null>,
-	]);
-
-	if (!appUser) {
+	if (layout.state === "needsOnboarding") {
 		return {
 			isAuthenticated: true,
 			isOnboarded: false,
-			email: user.email ?? null,
+			email: layout.email ?? null,
 		};
 	}
 
-	const isOnboarded = computeIsOnboarded(appUser, defaultOrganization);
-
 	return {
 		isAuthenticated: true,
-		isOnboarded,
-		email: user.email ?? appUser.email ?? null,
+		isOnboarded: true,
+		email: layout.email ?? null,
 	};
 });
 

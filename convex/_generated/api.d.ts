@@ -30,6 +30,7 @@ import type * as functions_profiles_queries from "../functions/profiles/queries.
 import type * as functions_savedProfiles_helpers from "../functions/savedProfiles/helpers.js";
 import type * as functions_savedProfiles_mutations from "../functions/savedProfiles/mutations.js";
 import type * as functions_savedProfiles_queries from "../functions/savedProfiles/queries.js";
+import type * as functions_viewer_queries from "../functions/viewer/queries.js";
 import type * as http from "../http.js";
 import type * as importPipeline from "../importPipeline.js";
 import type * as lib_importPipelineConfig from "../lib/importPipelineConfig.js";
@@ -79,6 +80,7 @@ declare const fullApi: ApiFromModules<{
   "functions/savedProfiles/helpers": typeof functions_savedProfiles_helpers;
   "functions/savedProfiles/mutations": typeof functions_savedProfiles_mutations;
   "functions/savedProfiles/queries": typeof functions_savedProfiles_queries;
+  "functions/viewer/queries": typeof functions_viewer_queries;
   http: typeof http;
   importPipeline: typeof importPipeline;
   "lib/importPipelineConfig": typeof lib_importPipelineConfig;

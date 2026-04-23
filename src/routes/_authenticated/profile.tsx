@@ -4,19 +4,19 @@ import { MapPin, Building2, GraduationCap, LinkIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { authClient } from '@/lib/auth-client'
-import { getOrganizationDataFn } from '@/lib/get-organization-data.functions'
 import { getMyProfileFn } from '@/lib/profile.functions'
 import { ProfilePageSkeleton } from '@/components/app/ProfilePageSkeleton'
 import { groupExperiencesByCompany } from '@/lib/experience'
 import { DotPattern } from '@/components/ui/dot-pattern'
 import { AuroraText } from '@/components/ui/aurora-text'
 import { cn } from '@/lib/utils'
+import { ensureOrganizationData } from '@/lib/get-organization-data.functions'
 
 export const Route = createFileRoute('/_authenticated/profile')({
-  loader: async () => {
-    const { organizationId } = await getOrganizationDataFn()
+  loader: async ({ context }) => {
+    const { organizationId } = await ensureOrganizationData(context.queryClient)
     if (!organizationId) throw new Error('No organization found')
-    return getMyProfileFn({ data: { organizationId } })
+    return await getMyProfileFn({ data: { organizationId } })
   },
   pendingComponent: ProfilePageSkeleton,
   component: ProfilePage,

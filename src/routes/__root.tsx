@@ -23,9 +23,13 @@ export const Route = createRootRouteWithContext<{
   convexQueryClient: ConvexQueryClient
 }>()({
   beforeLoad: async (ctx) => {
+    const serverHttpClient = ctx.context.convexQueryClient.serverHttpClient
+    if (!serverHttpClient) {
+      return { isAuthenticated: false, token: null }
+    }
     const token = await getAuthFn()
     if (token) {
-      ctx.context.convexQueryClient.serverHttpClient?.setAuth(token)
+      serverHttpClient.setAuth(token)
     }
     return { isAuthenticated: !!token, token }
   },

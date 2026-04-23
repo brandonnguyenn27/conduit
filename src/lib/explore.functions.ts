@@ -20,7 +20,7 @@ export const getExploreProfilesFn = createServerFn({ method: 'GET' })
   .handler(async ({ data }) => {
     try {
       const profiles = await fetchAuthQuery(
-        api.functions.profiles.queries.listPaginatedForExplore,
+        api.functions.profiles.queries.listPaginatedForExploreWithSavedProfileIds,
         {
           organizationId: data.organizationId,
           paginationOpts: {

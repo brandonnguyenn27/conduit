@@ -11,13 +11,14 @@ import { DotPattern } from '@/components/ui/dot-pattern'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Id } from '@convex/_generated/dataModel'
 import { useOrganization } from '@/contexts/OrganizationContext'
+import { ensureOrganizationData } from '@/lib/get-organization-data.functions'
 import { getSavedProfilesForViewerFn } from '@/lib/saved-profiles.functions'
-import { getOrganizationDataFn } from '@/lib/get-organization-data.functions'
+import { useCursorPagination } from '@/lib/use-cursor-pagination'
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/_authenticated/saved')({
   loader: async ({ context }) => {
-    const { organizationId } = await getOrganizationDataFn()
+    const { organizationId } = await ensureOrganizationData(context.queryClient)
     if (!organizationId) return
 
     await context.queryClient.prefetchQuery({
@@ -26,7 +27,7 @@ export const Route = createFileRoute('/_authenticated/saved')({
         await getSavedProfilesForViewerFn({
           data: { organizationId, cursor: null },
         }),
-      staleTime: 5 * 60 * 1000, 
+      staleTime: 5 * 60 * 1000,
     })
   },
   pendingComponent: SavedPageSkeleton,
@@ -69,11 +70,14 @@ function SavedPage() {
   const [selectedProfileId, setSelectedProfileId] = useState<Id<'profiles'> | null>(
     null
   )
-  const [cursors, setCursors] = useState<(string | null)[]>([null])
-  const [pageIndex, setPageIndex] = useState(0)
   const [isPending, startTransition] = useTransition()
 
-  const currentCursor = cursors[pageIndex]
+  const { cursors, pageIndex, currentCursor, nextPage, prevPage, selectPage } =
+    useCursorPagination()
+
+  if (!organizationId) {
+    return <SavedPageSkeleton />
+  }
 
   const {
     data: paginatedProfiles,
@@ -81,42 +85,26 @@ function SavedPage() {
     isFetching,
   } = useSuspenseQuery({
     queryKey: ['saved-profiles', organizationId, currentCursor],
+    staleTime: 5 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
     queryFn: async () =>
       await getSavedProfiles({
-        data: { organizationId: organizationId!, cursor: currentCursor },
+        data: { organizationId, cursor: currentCursor },
       }),
   })
 
   const handleNextPage = () => {
-    if (paginatedProfiles && !paginatedProfiles.isDone) {
-      startTransition(() => {
-        if (cursors.length <= pageIndex + 1) {
-          setCursors((prev) => {
-            const next = [...prev]
-            next[pageIndex + 1] = paginatedProfiles.continueCursor
-            return next
-          })
-        }
-        setPageIndex((prev) => prev + 1)
-      })
-    }
+    startTransition(() => nextPage(paginatedProfiles))
   }
 
   const handlePrevPage = () => {
-    if (pageIndex > 0) {
-      startTransition(() => {
-        setPageIndex((prev) => prev - 1)
-      })
-    }
+    startTransition(prevPage)
   }
 
   const handlePageSelect = (targetPageIndex: number) => {
     // Only allow selecting pages we already have cursors for
-    if (targetPageIndex >= 0 && targetPageIndex < cursors.length) {
-      startTransition(() => {
-        setPageIndex(targetPageIndex)
-      })
-    }
+    startTransition(() => selectPage(targetPageIndex))
   }
 
   return (
