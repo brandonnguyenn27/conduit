@@ -49,6 +49,7 @@ type ClaimedItem = {
   class?: string
   family?: string
   profileType?: 'alumni' | 'member'
+  refreshProfileId?: Id<'profiles'>
 }
 
 export const processImportQueue = action({
@@ -133,6 +134,12 @@ export const processImportQueue = action({
           linkedInUrl: item.linkedInUrl,
           profile: profileForImport,
         })
+        if (item.refreshProfileId) {
+          await ctx.runMutation(internal.functions.profiles.mutations.completeLinkedInRefresh, {
+            profileId: item.refreshProfileId,
+            organizationId: item.organizationId,
+          })
+        }
         await ctx.runMutation(api.functions.importQueue.mutations.updateStatus, {
           id: item.id,
           status: 'done',

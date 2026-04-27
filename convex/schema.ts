@@ -67,8 +67,14 @@ export default defineSchema({
     profileType: v.optional(v.union(v.literal('alumni'), v.literal('member'))),
     claimedByUserId: v.optional(v.string()),
     email: v.optional(v.string()),
+    linkedinRefreshPendingSince: v.optional(v.number()),
+    linkedinRefreshLastCompletedAt: v.optional(v.number()),
   })
     .index('by_organization_linkedin', ['organizationId', 'linkedInUrl'])
+    .index('by_organization_linkedin_refresh_pending', [
+      'organizationId',
+      'linkedinRefreshPendingSince',
+    ])
     .index('by_organization_profileType', ['organizationId', 'profileType'])
     .index('by_organization_class', ['organizationId', 'class'])
     .index('by_organization_family', ['organizationId', 'family'])
@@ -131,6 +137,7 @@ export default defineSchema({
     ),
     createdAt: v.number(),
     errorMessage: v.optional(v.string()),
+    refreshProfileId: v.optional(v.id('profiles')),
   })
     .index('by_status', ['status'])
     .index('by_status_createdAt', ['status', 'createdAt'])

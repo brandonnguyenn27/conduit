@@ -344,6 +344,7 @@ export function ProfileTable({
 													<div className="flex items-center justify-end gap-2">
 														{organizationId ? (
 															<SaveProfileButton
+																key={profileId}
 																profileId={profileId}
 																organizationId={organizationId}
 																saved={savedProfileIdSet.has(profileId)}

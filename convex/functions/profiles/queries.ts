@@ -2,6 +2,7 @@ import { query, type QueryCtx } from '../../_generated/server'
 import { v } from 'convex/values'
 import { paginationOptsValidator, paginationResultValidator } from 'convex/server'
 import { authComponent } from '../../auth'
+import { getLinkedInRefreshCooldownMs } from '../../lib/linkedinRefreshConfig'
 import { slugifySearchToken } from '../../lib/search/slug'
 import { normalizeRoleExact, splitJobTitlesByTenure, toRoleSearchQuery } from './helpers'
 import type { Id } from '../../_generated/dataModel'
@@ -47,6 +48,24 @@ async function requireOrganizationMembership(
   if (!appUser || appUser.organizationId !== organizationId) {
     throw new Error('Forbidden')
   }
+}
+
+async function requireAdminForOrganization(ctx: QueryCtx, organizationId: Id<'organizations'>) {
+  const user = await authComponent.safeGetAuthUser(ctx)
+  if (!user) {
+    throw new Error('Unauthorized')
+  }
+
+  const appUser = await ctx.db
+    .query('appUsers')
+    .withIndex('by_better_auth_user', (q) => q.eq('betterAuthUserId', user._id))
+    .unique()
+
+  if (!appUser || appUser.organizationId !== organizationId || appUser.isAdmin !== true) {
+    throw new Error('Forbidden')
+  }
+
+  return appUser
 }
 
 export const getForViewer = query({
@@ -286,6 +305,116 @@ export const getMyProfile = query({
     }
 
     return profile
+  },
+})
+
+export const getMyLinkedInRefreshState = query({
+  args: {
+    organizationId: v.id('organizations'),
+  },
+  handler: async (ctx, args) => {
+    const user = await authComponent.safeGetAuthUser(ctx)
+    if (!user) {
+      throw new Error('Unauthorized')
+    }
+
+    const appUser = await ctx.db
+      .query('appUsers')
+      .withIndex('by_better_auth_user', (q) => q.eq('betterAuthUserId', user._id))
+      .unique()
+
+    if (!appUser || appUser.organizationId !== args.organizationId) {
+      throw new Error('Forbidden')
+    }
+
+    if (!appUser.profileId) {
+      return null
+    }
+
+    const profile = await ctx.db.get(appUser.profileId)
+    if (!profile || profile.organizationId !== args.organizationId) {
+      return null
+    }
+
+    return {
+      pendingSince: profile.linkedinRefreshPendingSince,
+      lastCompletedAt: profile.linkedinRefreshLastCompletedAt,
+      cooldownMs: getLinkedInRefreshCooldownMs(),
+    }
+  },
+})
+
+/** Same cooldown as mutations use; for UI copy when refresh state is still loading or absent. */
+export const getLinkedInRefreshCooldownPolicy = query({
+  args: {
+    organizationId: v.id('organizations'),
+  },
+  handler: async (ctx, args) => {
+    const user = await authComponent.safeGetAuthUser(ctx)
+    if (!user) {
+      throw new Error('Unauthorized')
+    }
+
+    const appUser = await ctx.db
+      .query('appUsers')
+      .withIndex('by_better_auth_user', (q) => q.eq('betterAuthUserId', user._id))
+      .unique()
+
+    if (!appUser || appUser.organizationId !== args.organizationId) {
+      throw new Error('Forbidden')
+    }
+
+    return {
+      cooldownMs: getLinkedInRefreshCooldownMs(),
+    }
+  },
+})
+
+export const listLinkedInRefreshPending = query({
+  args: {
+    organizationId: v.id('organizations'),
+  },
+  handler: async (ctx, args) => {
+    await requireAdminForOrganization(ctx, args.organizationId)
+
+    return await ctx.db
+      .query('profiles')
+      .withIndex('by_organization_linkedin_refresh_pending', (q) =>
+        q.eq('organizationId', args.organizationId).gt('linkedinRefreshPendingSince', 0)
+      )
+      .collect()
+  },
+})
+
+export const adminSearchProfilesByNameForRefresh = query({
+  args: {
+    organizationId: v.id('organizations'),
+    searchText: v.string(),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdminForOrganization(ctx, args.organizationId)
+
+    const q = args.searchText.trim().toLowerCase()
+    if (!q) {
+      return []
+    }
+
+    const limit = Math.max(1, Math.min(args.limit ?? 25, 50))
+
+    const results = await ctx.db
+      .query('profiles')
+      .withSearchIndex('by_organization_name_search', (search) =>
+        search.search('name', q).eq('organizationId', args.organizationId)
+      )
+      .take(limit)
+
+    return results.map((profile) => ({
+      _id: profile._id,
+      name: profile.name,
+      headline: profile.headline,
+      linkedInUrl: profile.linkedInUrl,
+    }))
   },
 })
 

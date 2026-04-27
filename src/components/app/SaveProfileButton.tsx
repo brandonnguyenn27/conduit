@@ -29,30 +29,35 @@ export function SaveProfileButton({
   onUnsave,
 }: SaveProfileButtonProps) {
   const [isMutating, setIsMutating] = useState(false)
+  const [optimisticSaved, setOptimisticSaved] = useState<boolean | null>(null)
 
   const queryClient = useQueryClient()
 
-  const isLoading = loading || isMutating
+  const displaySaved = optimisticSaved ?? saved
 
   async function handleToggle(e: React.MouseEvent) {
     e.preventDefault()
     e.stopPropagation()
 
-    if (isLoading) return
+    if (loading || isMutating) return
 
+    const currentlyDisplayed = optimisticSaved ?? saved
+    setOptimisticSaved(!currentlyDisplayed)
     setIsMutating(true)
 
     try {
-      if (saved) {
+      if (currentlyDisplayed) {
         await onUnsave({ profileId })
         toast.success('Profile removed from saved')
       } else {
         await onSave({ profileId, organizationId })
         toast.success('Profile saved')
       }
-      
+
       await queryClient.invalidateQueries({ queryKey: ['saved-profiles'] })
+      setOptimisticSaved(null)
     } catch (error) {
+      setOptimisticSaved(null)
       toast.error('Failed to update saved status')
       console.error(error)
     } finally {
@@ -64,18 +69,21 @@ export function SaveProfileButton({
     <button
       type="button"
       onClick={handleToggle}
-      disabled={isLoading}
-      aria-label={saved ? 'Remove from saved profiles' : 'Save profile'}
-      title={saved ? 'Remove from saved profiles' : 'Save profile'}
+      disabled={loading}
+      aria-busy={isMutating}
+      aria-label={
+        displaySaved ? 'Remove from saved profiles' : 'Save profile'
+      }
+      title={displaySaved ? 'Remove from saved profiles' : 'Save profile'}
       className={cn(
-        'group relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-border/70 transition-colors hover:bg-muted focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
-        saved && 'border-yellow-400/50 bg-yellow-400/10 hover:bg-yellow-400/20',
+        'group relative cursor-pointer inline-flex h-9 w-9 items-center justify-center rounded-md border border-border/70 transition-colors hover:bg-muted focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
+        displaySaved && 'border-yellow-400/50 bg-yellow-400/10 hover:bg-yellow-400/20',
         className
       )}
     >
       <AnimatePresence mode="wait" initial={false}>
         <motion.div
-          key={saved ? 'saved' : 'unsaved'}
+          key={displaySaved ? 'saved' : 'unsaved'}
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.8, opacity: 0 }}
@@ -85,7 +93,7 @@ export function SaveProfileButton({
           <Star
             className={cn(
               'h-4 w-4 transition-colors',
-              saved
+              displaySaved
                 ? 'fill-yellow-400 text-yellow-400'
                 : 'text-foreground group-hover:text-foreground/80',
               iconClassName

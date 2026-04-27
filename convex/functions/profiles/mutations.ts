@@ -1,6 +1,8 @@
 import type { Id } from '../../_generated/dataModel'
-import { internalMutation, mutation } from '../../_generated/server'
+import { internalMutation, mutation, type MutationCtx } from '../../_generated/server'
 import { v } from 'convex/values'
+import { getLinkedInRefreshCooldownMs } from '../../lib/linkedinRefreshConfig'
+import { authComponent } from '../../auth'
 import { deriveCurrentExperienceFromStored } from '../../lib/profiles/deriveCurrentExperience'
 import {
   canonicalizeJobTitleTokens,
@@ -24,6 +26,23 @@ import {
   syncSavedProfilePreviewsForProfile,
   toSavedProfilePreview,
 } from '../savedProfiles/helpers'
+
+async function requireAdminAppUser(ctx: MutationCtx) {
+  const user = await authComponent.safeGetAuthUser(ctx)
+  if (!user) {
+    throw new Error('Unauthorized')
+  }
+
+  const appUser = await ctx.db
+    .query('appUsers')
+    .withIndex('by_better_auth_user', (q) => q.eq('betterAuthUserId', user._id))
+    .unique()
+  if (!appUser || appUser.isAdmin !== true) {
+    throw new Error('Forbidden')
+  }
+
+  return appUser
+}
 
 const EMPTY_TOKENS = {
   companies: [] as string[],
@@ -513,6 +532,101 @@ export const backfillNormalizedFacetArrays = internalMutation({
       isDone: result.isDone,
       nextCursor: result.isDone ? null : result.continueCursor,
     }
+  },
+})
+
+export const completeLinkedInRefresh = internalMutation({
+  args: {
+    profileId: v.id('profiles'),
+    organizationId: v.id('organizations'),
+  },
+  handler: async (ctx, args) => {
+    const profile = await ctx.db.get(args.profileId)
+    if (!profile || profile.organizationId !== args.organizationId) {
+      return
+    }
+    const now = Date.now()
+    await ctx.db.patch(args.profileId, {
+      linkedinRefreshPendingSince: undefined,
+      linkedinRefreshLastCompletedAt: now,
+    })
+  },
+})
+
+export const requestLinkedInRefresh = mutation({
+  args: {
+    organizationId: v.id('organizations'),
+  },
+  handler: async (ctx, args) => {
+    const user = await authComponent.safeGetAuthUser(ctx)
+    if (!user) {
+      throw new Error('Unauthorized')
+    }
+
+    const appUser = await ctx.db
+      .query('appUsers')
+      .withIndex('by_better_auth_user', (q) => q.eq('betterAuthUserId', user._id))
+      .unique()
+
+    if (!appUser || appUser.organizationId !== args.organizationId) {
+      throw new Error('Forbidden')
+    }
+
+    if (!appUser.profileId) {
+      throw new Error('No profile linked to your account.')
+    }
+
+    const profile = await ctx.db.get(appUser.profileId)
+    if (!profile || profile.organizationId !== args.organizationId) {
+      throw new Error('No profile linked to your account.')
+    }
+
+    if (profile.linkedinRefreshPendingSince !== undefined) {
+      throw new Error('You already have a pending LinkedIn update request.')
+    }
+
+    const cooldownMs = getLinkedInRefreshCooldownMs()
+    const now = Date.now()
+    const last = profile.linkedinRefreshLastCompletedAt
+    if (last !== undefined && now < last + cooldownMs) {
+      throw new Error('You can request another update after the cooldown period.')
+    }
+
+    await ctx.db.patch(profile._id, { linkedinRefreshPendingSince: now })
+    return null
+  },
+})
+
+export const removeLinkedInRefreshPending = mutation({
+  args: {
+    profileId: v.id('profiles'),
+  },
+  handler: async (ctx, args) => {
+    const appUser = await requireAdminAppUser(ctx)
+    const profile = await ctx.db.get(args.profileId)
+    if (!profile || profile.organizationId !== appUser.organizationId) {
+      throw new Error('Profile not found.')
+    }
+    await ctx.db.patch(args.profileId, { linkedinRefreshPendingSince: undefined })
+    return null
+  },
+})
+
+export const addLinkedInRefreshPending = mutation({
+  args: {
+    profileId: v.id('profiles'),
+  },
+  handler: async (ctx, args) => {
+    const appUser = await requireAdminAppUser(ctx)
+    const profile = await ctx.db.get(args.profileId)
+    if (!profile || profile.organizationId !== appUser.organizationId) {
+      throw new Error('Profile not found.')
+    }
+    if (profile.linkedinRefreshPendingSince !== undefined) {
+      return null
+    }
+    await ctx.db.patch(args.profileId, { linkedinRefreshPendingSince: Date.now() })
+    return null
   },
 })
 

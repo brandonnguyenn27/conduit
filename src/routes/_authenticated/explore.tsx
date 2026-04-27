@@ -131,10 +131,6 @@ function ExplorePageContent({ organizationId }: { organizationId: Id<'organizati
       }),
   })
 
-  const savedProfileIdSet = useMemo(() => {
-    return new Set(paginatedProfiles?.savedProfileIds ?? [])
-  }, [paginatedProfiles?.savedProfileIds])
-
   const handleNextPage = () => {
     startTransition(() => nextPage(paginatedProfiles))
   }
@@ -298,8 +294,6 @@ function ExplorePageContent({ organizationId }: { organizationId: Id<'organizati
             profiles={paginatedProfiles?.page ?? []}
             isLoading={isQueryPending && paginatedProfiles === undefined}
             emptyMessage="No profiles found matching your filters."
-            savedProfileIdSet={savedProfileIdSet}
-            isSavedProfilesLoading={false}
             onRefresh={refetch}
             isRefreshing={isFetching || isTransitionPending}
             onProfileClick={(id) => setSelectedProfileId(id as Id<'profiles'>)}
@@ -331,8 +325,6 @@ function ExplorePageContent({ organizationId }: { organizationId: Id<'organizati
           }}
           profile={undefined}
           isLoading={false}
-          savedProfileIdSet={savedProfileIdSet}
-          isSavedProfilesLoading={false}
         />
       )}
     </div>

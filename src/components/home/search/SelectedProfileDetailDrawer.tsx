@@ -3,6 +3,7 @@ import { useServerFn } from '@tanstack/react-start'
 import type { Id } from '@convex/_generated/dataModel'
 
 import { ProfileDetailDrawer } from '@/components/app/ProfileDetailDrawer'
+import { useSavedProfileIds } from '@/hooks/use-saved-profile-ids'
 import { getProfileDetailForViewerFn } from '@/lib/search.functions'
 
 interface SelectedProfileDetailDrawerProps {
@@ -19,6 +20,9 @@ export function SelectedProfileDetailDrawer({
   onOpenChange,
 }: SelectedProfileDetailDrawerProps) {
   const getProfileDetailForViewer = useServerFn(getProfileDetailForViewerFn)
+  const { savedProfileIdSet, isLoading: isSavedProfilesLoading } =
+    useSavedProfileIds(organizationId)
+
   const selectedProfileQuery = useQuery({
     queryKey: ['profile-detail', organizationId, selectedProfileId],
     staleTime: Infinity,
@@ -40,6 +44,8 @@ export function SelectedProfileDetailDrawer({
       onOpenChange={onOpenChange}
       profile={selectedProfileQuery.data ?? undefined}
       isLoading={selectedProfileQuery.isLoading}
+      savedProfileIdSet={savedProfileIdSet}
+      isSavedProfilesLoading={isSavedProfilesLoading}
     />
   )
 }

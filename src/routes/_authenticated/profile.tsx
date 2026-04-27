@@ -1,6 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { MapPin, Building2, GraduationCap, LinkIcon } from 'lucide-react'
+import { useMutation, useQuery } from 'convex/react'
+import { MapPin, Building2, GraduationCap, LinkIcon, RefreshCw } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { toast } from 'sonner'
 
+import { api } from '@convex/_generated/api'
+import { DEFAULT_LINKEDIN_REFRESH_COOLDOWN_MS } from '@convex/lib/linkedinRefreshConfig.ts'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { authClient } from '@/lib/auth-client'
@@ -9,8 +15,11 @@ import { ProfilePageSkeleton } from '@/components/app/ProfilePageSkeleton'
 import { groupExperiencesByCompany } from '@/lib/experience'
 import { DotPattern } from '@/components/ui/dot-pattern'
 import { AuroraText } from '@/components/ui/aurora-text'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { cn } from '@/lib/utils'
 import { ensureOrganizationData } from '@/lib/get-organization-data.functions'
+import { useOrganization } from '@/contexts/OrganizationContext'
+import { getLinkedInRefreshUiState } from '@/lib/linkedin-refresh-display'
 
 export const Route = createFileRoute('/_authenticated/profile')({
   loader: async ({ context }) => {
@@ -22,8 +31,34 @@ export const Route = createFileRoute('/_authenticated/profile')({
   component: ProfilePage,
 })
 
+const MS_PER_DAY = 86400000
+
 function ProfilePage() {
   const profile = Route.useLoaderData()
+  const organizationId = useOrganization()
+  const [refreshConfirmOpen, setRefreshConfirmOpen] = useState(false)
+  const [requestSubmitting, setRequestSubmitting] = useState(false)
+
+  const refreshState = useQuery(
+    api.functions.profiles.queries.getMyLinkedInRefreshState,
+    organizationId ? { organizationId } : 'skip',
+  )
+
+  const cooldownPolicy = useQuery(
+    api.functions.profiles.queries.getLinkedInRefreshCooldownPolicy,
+    organizationId ? { organizationId } : 'skip',
+  )
+
+  const requestRefresh = useMutation(api.functions.profiles.mutations.requestLinkedInRefresh)
+
+  const refreshUi = useMemo(() => {
+    return getLinkedInRefreshUiState(Date.now(), refreshState ?? null)
+  }, [refreshState])
+
+  const policyCooldownDays = useMemo(() => {
+    const ms = refreshState?.cooldownMs ?? cooldownPolicy?.cooldownMs ?? DEFAULT_LINKEDIN_REFRESH_COOLDOWN_MS
+    return Math.max(1, Math.ceil(ms / MS_PER_DAY))
+  }, [refreshState, cooldownPolicy])
 
   if (!profile) {
     return (
@@ -46,7 +81,70 @@ function ProfilePage() {
     )
   }
 
+  const onConfirmRequestRefresh = async () => {
+    if (!organizationId) return
+    setRequestSubmitting(true)
+    try {
+      await requestRefresh({ organizationId })
+      toast.success('Request submitted. An administrator will process your update.')
+      setRefreshConfirmOpen(false)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not submit request.')
+    } finally {
+      setRequestSubmitting(false)
+    }
+  }
+
+  const refreshConfirmModal =
+    refreshConfirmOpen && typeof document !== 'undefined'
+      ? createPortal(
+          <div
+            role="presentation"
+            className="fixed inset-0 z-100 flex min-h-dvh w-full items-center justify-center bg-black/50 p-4"
+            onClick={() => setRefreshConfirmOpen(false)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setRefreshConfirmOpen(false)
+            }}
+          >
+            <Card
+              className="relative z-101 w-full max-w-md shadow-lg"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <CardHeader>
+                <CardTitle className="font-editorial text-lg">Request LinkedIn update?</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Your request goes to an administrator for approval. After your information is updated,
+                  you won&apos;t be able to request again for about {policyCooldownDays}{' '}
+                  {policyCooldownDays === 1 ? 'day' : 'days'} (organization policy).
+                </p>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setRefreshConfirmOpen(false)}
+                    disabled={requestSubmitting}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => void onConfirmRequestRefresh()}
+                    disabled={requestSubmitting}
+                  >
+                    {requestSubmitting ? 'Submitting…' : 'Confirm request'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>,
+          document.body,
+        )
+      : null
+
   return (
+    <>
     <div className="relative min-h-[70vh] w-full flex flex-col items-center overflow-x-hidden font-secondary">
       <DotPattern
         width={32}
@@ -59,6 +157,26 @@ function ProfilePage() {
         )}
       />
       <div className="relative z-10 w-full max-w-4xl space-y-6 pt-10 pb-16 px-4">
+        {refreshUi.isPending ? (
+          <Alert>
+            <AlertTitle>LinkedIn update requested</AlertTitle>
+            <AlertDescription>
+              An administrator will process your refresh and your directory entry will be updated from
+              LinkedIn.
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
+        {refreshUi.showCooldownMessage ? (
+          <Alert>
+            <AlertTitle>Cooldown active</AlertTitle>
+            <AlertDescription>
+              You can request another LinkedIn update in {refreshUi.cooldownDaysRemaining}{' '}
+              {refreshUi.cooldownDaysRemaining === 1 ? 'day' : 'days'}.
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
         {/* Header Section */}
         <Card>
         <CardContent className="pt-6">
@@ -123,7 +241,7 @@ function ProfilePage() {
             
             <Button
               variant="destructive"
-              className="mt-4 sm:mt-0"
+              className="mt-4 w-full sm:mt-0 sm:ms-auto sm:w-auto sm:shrink-0"
               onClick={() => {
                 void authClient.signOut({
                   fetchOptions: {
@@ -249,7 +367,38 @@ function ProfilePage() {
           )}
         </CardContent>
       </Card>
+
+      {refreshUi.canRequest ? (
+        <Card className="border-muted-foreground/25 bg-muted/40 shadow-sm backdrop-blur-[1px]">
+          <CardContent className="flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
+            <div className="space-y-2">
+              <h3 className="font-semibold font-editorial text-lg tracking-tight">
+                LinkedIn directory data
+              </h3>
+              <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
+                Ask your administrator to refresh your profile from LinkedIn so this page stays current.
+              </p>
+            </div>
+            <Button
+              type="button"
+              size="lg"
+              variant="default"
+              className={cn(
+                'shrink-0 cursor-pointer px-7 shadow-sm transition-all duration-200',
+                'hover:bg-primary/88 hover:shadow-md active:scale-[0.99]',
+                'dark:hover:bg-primary/80',
+              )}
+              onClick={() => setRefreshConfirmOpen(true)}
+            >
+              <RefreshCw className="size-4 opacity-90" aria-hidden />
+              Request LinkedIn update
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
     </div>
+    {refreshConfirmModal}
+    </>
   )
 }

@@ -120,6 +120,7 @@ export function ProfileDetailDrawer({
               <div className="flex shrink-0 items-center justify-end gap-2">
                 {organizationId ? (
                   <SaveProfileButton
+                    key={profile._id}
                     profileId={profile._id}
                     organizationId={organizationId}
                     saved={savedProfileIdSet.has(profile._id)}

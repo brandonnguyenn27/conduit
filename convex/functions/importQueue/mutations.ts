@@ -255,6 +255,71 @@ export const createManyForCurrentOrg = mutation({
   },
 })
 
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = []
+  for (let i = 0; i < arr.length; i += size) {
+    out.push(arr.slice(i, i + size))
+  }
+  return out
+}
+
+/** Enqueue all profiles in the org with `linkedinRefreshPendingSince` set. */
+export const enqueueLinkedInRefreshForOrg = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const appUser = await requireAdminAppUser(ctx)
+    const organizationId = appUser.organizationId
+
+    const pending = await ctx.db
+      .query('profiles')
+      .withIndex('by_organization_linkedin_refresh_pending', (q) =>
+        q.eq('organizationId', organizationId).gt('linkedinRefreshPendingSince', 0)
+      )
+      .collect()
+
+    let enqueued = 0
+    let skippedInvalid = 0
+    const now = Date.now()
+
+    const chunks = chunkArray(pending, MAX_CREATE_MANY)
+    for (const chunk of chunks) {
+      const inserts: Promise<unknown>[] = []
+      for (const profile of chunk) {
+        const normalized = normalizeLinkedInProfileUrl(profile.linkedInUrl)
+        if (!normalized) {
+          skippedInvalid += 1
+          continue
+        }
+        inserts.push(
+          ctx.db.insert('importQueue', {
+            organizationId,
+            linkedInUrl: normalized,
+            email: normalizeOptionalEmail(profile.email),
+            class: profile.class,
+            family: profile.family,
+            profileType: profile.profileType,
+            status: 'pending',
+            createdAt: now,
+            refreshProfileId: profile._id,
+          })
+        )
+      }
+      if (inserts.length > 0) {
+        await Promise.all(inserts)
+        enqueued += inserts.length
+      }
+    }
+
+    if (enqueued > 0) {
+      await ctx.scheduler.runAfter(PIPELINE_INITIAL_RUN_AFTER_MS, api.importPipeline.processImportQueue, {
+        limit: PIPELINE_BATCH_SIZE,
+      })
+    }
+
+    return { enqueued, skippedInvalid, pendingCount: pending.length }
+  },
+})
+
 export const updateStatus = mutation({
   args: {
     id: v.id('importQueue'),
@@ -419,6 +484,7 @@ export const claimNextBatch = internalMutation({
       class?: string
       family?: string
       profileType?: 'alumni' | 'member'
+      refreshProfileId?: (typeof items)[0]['refreshProfileId']
     }[] = []
     for (const item of items) {
       await ctx.db.patch(item._id, { status: 'processing' })
@@ -430,6 +496,7 @@ export const claimNextBatch = internalMutation({
         class: item.class,
         family: item.family,
         profileType: item.profileType,
+        refreshProfileId: item.refreshProfileId,
       })
     }
     return out
