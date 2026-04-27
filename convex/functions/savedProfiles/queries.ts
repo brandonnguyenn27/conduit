@@ -1,6 +1,6 @@
 import { query } from '../../_generated/server'
 import { v } from 'convex/values'
-import { paginationOptsValidator } from 'convex/server'
+import { paginationOptsValidator, paginationResultValidator } from 'convex/server'
 import { authComponent } from '../../auth'
 
 export const listByUserAndOrg = query({
@@ -23,11 +23,21 @@ export const listByUserAndOrg = query({
 })
 
 
+const savedProfileTableRowValidator = v.object({
+  _id: v.id('profiles'),
+  name: v.string(),
+  headline: v.string(),
+  currentCompany: v.optional(v.string()),
+  linkedInUrl: v.string(),
+  major: v.optional(v.string()),
+})
+
 export const listPopulatedByUserAndOrg = query({
   args: {
     organizationId: v.id('organizations'),
     paginationOpts: paginationOptsValidator,
   },
+  returns: paginationResultValidator(savedProfileTableRowValidator),
   handler: async (ctx, args) => {
     const user = await authComponent.safeGetAuthUser(ctx)
     if (!user) {
@@ -44,13 +54,22 @@ export const listPopulatedByUserAndOrg = query({
 
     return {
       ...savedRecordsResult,
-      page: savedRecordsResult.page.map((saved) => ({
-        _id: saved.profileId,
-        name: saved.previewName,
-        headline: saved.previewHeadline,
-        currentCompany: saved.previewCurrentCompany,
-        linkedInUrl: saved.previewLinkedInUrl,
-      })),
+      page: await Promise.all(
+        savedRecordsResult.page.map(async (saved) => {
+          const major =
+            saved.previewMajor !== undefined
+              ? saved.previewMajor || undefined
+              : (await ctx.db.get(saved.profileId))?.majors[0]
+          return {
+            _id: saved.profileId,
+            name: saved.previewName,
+            headline: saved.previewHeadline,
+            currentCompany: saved.previewCurrentCompany,
+            linkedInUrl: saved.previewLinkedInUrl,
+            major,
+          }
+        })
+      ),
     }
   },
 })

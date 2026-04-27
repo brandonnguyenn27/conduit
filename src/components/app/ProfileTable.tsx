@@ -32,12 +32,14 @@ type SearchProfile = {
 	name: string;
 	headline: string;
 	currentCompany?: string;
+	major?: string;
 	linkedInUrl: string;
 };
 
 const NAME_MAX = 36;
 const HEADLINE_MAX = 72;
 const COMPANY_MAX = 36;
+const MAJOR_MAX = 40;
 
 const TABLE_PADDING_ROW_KEYS = [
 	"pad-0",
@@ -258,18 +260,20 @@ export function ProfileTable({
 							<Table className="w-full table-auto md:table-fixed">
 								<TableHeader>
 									<TableRow>
-										<TableHead className="w-[72%] text-xs uppercase tracking-wide md:w-[22%]">
+										<TableHead className="w-[72%] text-xs uppercase tracking-wide md:w-[18%]">
 											Name
 										</TableHead>
-										<TableHead className="hidden w-[40%] text-xs uppercase tracking-wide md:table-cell">
+										<TableHead className="hidden w-[34%] text-xs uppercase tracking-wide md:table-cell">
 											Current Occupation
 										</TableHead>
-										<TableHead className="hidden w-[22%] text-xs uppercase tracking-wide md:table-cell">
+										<TableHead className="hidden w-[18%] text-xs uppercase tracking-wide md:table-cell">
 											Company
 										</TableHead>
-										<TableHead className="w-[28%] text-right text-xs uppercase tracking-wide md:w-[16%]">
-											<span className="md:hidden">Actions</span>
-											<span className="hidden md:inline">LinkedIn</span>
+										<TableHead className="hidden w-[18%] text-xs uppercase tracking-wide md:table-cell">
+											Major
+										</TableHead>
+										<TableHead className="w-[28%] text-right text-xs uppercase tracking-wide md:w-[22%]">
+											
 										</TableHead>
 									</TableRow>
 								</TableHeader>
@@ -286,6 +290,13 @@ export function ProfileTable({
 											companyRaw,
 											COMPANY_MAX,
 										);
+										const majorRaw = profile.major?.trim()
+											? profile.major.trim()
+											: "—";
+										const majorDisplay = truncateDisplay(
+											majorRaw,
+											MAJOR_MAX,
+										);
 										return (
 											<TableRow
 												key={profile._id}
@@ -299,6 +310,17 @@ export function ProfileTable({
 													<span className="block truncate" title={profile.name}>
 														{nameDisplay}
 													</span>
+													{profile.major?.trim() ? (
+														<span
+															className="mt-0.5 block truncate text-xs text-muted-foreground md:hidden"
+															title={profile.major.trim()}
+														>
+															{truncateDisplay(
+																profile.major.trim(),
+																MAJOR_MAX,
+															)}
+														</span>
+													) : null}
 												</TableCell>
 												<TableCell className="hidden py-4 text-muted-foreground md:table-cell">
 													<span
@@ -311,6 +333,11 @@ export function ProfileTable({
 												<TableCell className="hidden py-4 md:table-cell">
 													<span className="block truncate" title={companyRaw}>
 														{companyDisplay}
+													</span>
+												</TableCell>
+												<TableCell className="hidden py-4 text-muted-foreground md:table-cell">
+													<span className="block truncate" title={majorRaw}>
+														{majorDisplay}
 													</span>
 												</TableCell>
 												<TableCell className="py-4">
@@ -359,6 +386,7 @@ export function ProfileTable({
 												<TableCell className="py-4">
 													<div className="h-9 w-px"></div>
 												</TableCell>
+												<TableCell className="hidden py-4 md:table-cell"></TableCell>
 												<TableCell className="hidden py-4 md:table-cell"></TableCell>
 												<TableCell className="hidden py-4 md:table-cell"></TableCell>
 												<TableCell className="py-4"></TableCell>

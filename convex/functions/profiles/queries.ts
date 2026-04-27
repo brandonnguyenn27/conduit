@@ -152,6 +152,7 @@ export const searchProfilesPaginated = query({
       headline: v.string(),
       currentCompany: v.optional(v.string()),
       linkedInUrl: v.string(),
+      major: v.optional(v.string()),
       matchType: v.union(v.literal('exact'), v.literal('suggested')),
     })
   ),
@@ -248,6 +249,7 @@ export const searchProfilesPaginated = query({
           headline,
           currentCompany,
           linkedInUrl: profile.linkedInUrl,
+          major: profile.majors[0],
           matchType,
         }
       }),

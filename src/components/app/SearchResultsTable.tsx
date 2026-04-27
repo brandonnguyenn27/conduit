@@ -5,6 +5,7 @@ type SearchProfile = {
   name: string
   headline: string
   currentCompany?: string
+  major?: string
   linkedInUrl: string
 }
 

@@ -3,7 +3,7 @@ import type { MutationCtx } from '../../_generated/server'
 
 export function toSavedProfilePreview(profile: Pick<
   Doc<'profiles'>,
-  'name' | 'linkedInUrl' | 'currentCompany' | 'currentExperience'
+  'name' | 'linkedInUrl' | 'currentCompany' | 'currentExperience' | 'majors'
 >) {
   return {
     previewName: profile.name,
@@ -11,6 +11,7 @@ export function toSavedProfilePreview(profile: Pick<
     previewCurrentCompany:
       profile.currentExperience?.companyName ?? profile.currentCompany ?? '',
     previewLinkedInUrl: profile.linkedInUrl,
+    previewMajor: profile.majors[0] ?? '',
   }
 }
 

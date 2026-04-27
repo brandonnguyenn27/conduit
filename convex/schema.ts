@@ -181,6 +181,7 @@ export default defineSchema({
     previewHeadline: v.string(),
     previewCurrentCompany: v.string(),
     previewLinkedInUrl: v.string(),
+    previewMajor: v.optional(v.string()),
     createdAt: v.number(),
   })
     .index('by_user_org', ['userId', 'organizationId'])
