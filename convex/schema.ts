@@ -78,6 +78,10 @@ export default defineSchema({
       searchField: 'suggestSearchText',
       filterFields: ['organizationId'],
     })
+    .searchIndex('by_organization_name_search', {
+      searchField: 'name',
+      filterFields: ['organizationId'],
+    })
     .searchIndex('by_companies_slug_search', {
       searchField: 'companiesSearchSlug',
       filterFields: ['organizationId', 'profileType'],

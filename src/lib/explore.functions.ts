@@ -7,6 +7,7 @@ type ExploreFilters = {
   profileType?: 'alumni' | 'member'
   class?: string
   family?: string
+  searchText?: string
 }
 
 export const getExploreProfilesFn = createServerFn({ method: 'GET' })

@@ -1,6 +1,7 @@
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery as useTanStackQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
+import { Search, X } from 'lucide-react'
 import { useMemo, useState, useTransition } from 'react'
 
 import { ExplorePageSkeleton } from '@/components/app/ExplorePageSkeleton'
@@ -9,6 +10,12 @@ import { ProfileTable } from '@/components/app/ProfileTable'
 import { SelectedProfileDetailDrawer } from '@/components/home/search/SelectedProfileDetailDrawer'
 import { AuroraText } from '@/components/ui/aurora-text'
 import { DotPattern } from '@/components/ui/dot-pattern'
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from '@/components/ui/input-group'
 import {
   Select,
   SelectContent,
@@ -20,6 +27,7 @@ import type { Id } from '@convex/_generated/dataModel'
 import { api } from 'convex/_generated/api'
 import { useQuery } from 'convex/react'
 import { useOrganization } from '@/contexts/OrganizationContext'
+import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { FRATERNITY_FAMILY_LABELS } from '@/lib/fraternityCatalog'
 import { sortFraternityClassesByGreek } from '@/lib/fraternityClassSort'
 import { getExploreProfilesFn } from '@/lib/explore.functions'
@@ -38,7 +46,7 @@ export const Route = createFileRoute('/_authenticated/explore')({
     const { organizationId } = await ensureOrganizationData(context.queryClient)
     if (!organizationId) return
     await context.queryClient.prefetchQuery({
-      queryKey: ['explore-profiles', organizationId, null, '', '', ''],
+      queryKey: ['explore-profiles', organizationId, null, '', '', '', ''],
       queryFn: async () =>
         await getExploreProfilesFn({
           data: { organizationId, cursor: null, filters: {} },
@@ -54,16 +62,39 @@ const ALL_VALUE = '__all__'
 
 function ExplorePage() {
   const organizationId = useOrganization()
+  if (!organizationId) {
+    return <ExplorePageSkeleton />
+  }
+  return <ExplorePageContent organizationId={organizationId} />
+}
+
+function ExplorePageContent({ organizationId }: { organizationId: Id<'organizations'> }) {
   const getExploreProfiles = useServerFn(getExploreProfilesFn)
   const [selectedProfileId, setSelectedProfileId] = useState<Id<'profiles'> | null>(
     null
   )
-  const [isPending, startTransition] = useTransition()
-
-  const { cursors, pageIndex, currentCursor, reset, nextPage, prevPage, selectPage } =
-    useCursorPagination()
+  const [isTransitionPending, startTransition] = useTransition()
 
   const [filters, setFilters] = useState<ExploreFilters>({})
+  const [searchInput, setSearchInput] = useState('')
+  const debouncedSearch = useDebouncedValue(searchInput, 350)
+
+  const filtersKey = useMemo(
+    () =>
+      [filters.profileType ?? '', filters.class ?? '', filters.family ?? '', debouncedSearch.trim()] as const,
+    [filters.profileType, filters.class, filters.family, debouncedSearch]
+  )
+
+  const exploreFiltersPayload = useMemo(() => {
+    const q = debouncedSearch.trim()
+    return {
+      ...filters,
+      ...(q ? { searchText: q } : {}),
+    }
+  }, [filters, debouncedSearch])
+
+  const { cursors, pageIndex, currentCursor, reset, nextPage, prevPage, selectPage } =
+    useCursorPagination(filtersKey.join('\0'))
 
   const classFacetPage = useQuery(
     api.functions.facets.queries.getFacetPage,
@@ -79,30 +110,23 @@ function ExplorePage() {
     return sortFraternityClassesByGreek(withSelected)
   }, [classFacetPage?.items, filters.class])
 
-  if (!organizationId) {
-    return <ExplorePageSkeleton />
-  }
-
-  const filtersKey = useMemo(
-    () => [filters.profileType ?? '', filters.class ?? '', filters.family ?? ''] as const,
-    [filters.profileType, filters.class, filters.family]
-  )
-
   const {
     data: paginatedProfiles,
     refetch,
     isFetching,
-  } = useSuspenseQuery({
+    isPending: isQueryPending,
+  } = useTanStackQuery({
     queryKey: ['explore-profiles', organizationId, currentCursor, ...filtersKey],
     staleTime: 5 * 60 * 1000,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData,
     queryFn: async () =>
       await getExploreProfiles({
         data: {
           organizationId,
           cursor: currentCursor,
-          filters,
+          filters: exploreFiltersPayload,
         },
       }),
   })
@@ -167,81 +191,117 @@ function ExplorePage() {
         </h1>
 
         <div className="w-full max-w-6xl px-4 sm:px-6 lg:px-8">
-          {/* Filter bar */}
-          <div className="mb-4 flex flex-wrap items-center gap-3 font-secondary">
-            <Select
-              value={filters.profileType ?? ALL_VALUE}
-              onValueChange={(v) => handleFilterChange('profileType', v)}
-            >
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Profile Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_VALUE}>All Types</SelectItem>
-                <SelectItem value="alumni">Alumni</SelectItem>
-                <SelectItem value="member">Member</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={filters.class ?? ALL_VALUE}
-              onValueChange={(v) => handleFilterChange('class', v)}
-            >
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Class" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_VALUE}>All Classes</SelectItem>
-                {classFilterOptions.map((label) => (
-                  <SelectItem key={label} value={label}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={filters.family ?? ALL_VALUE}
-              onValueChange={(v) => handleFilterChange('family', v)}
-            >
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Family" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_VALUE}>All Families</SelectItem>
-                {FRATERNITY_FAMILY_LABELS.map((label) => (
-                  <SelectItem key={label} value={label}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {hasActiveFilters(filters) && (
-              <button
-                type="button"
-                onClick={() => {
-                  startTransition(() => {
-                    setFilters({})
-                    reset()
-                  })
-                }}
-                className="text-sm text-muted-foreground underline hover:text-foreground"
+          {/* Filter bar + search */}
+          <div className="mb-4 flex flex-col gap-4 font-secondary lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex w-full min-w-0 flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
+              <Select
+                value={filters.profileType ?? ALL_VALUE}
+                onValueChange={(v) => handleFilterChange('profileType', v)}
               >
-                Clear filters
-              </button>
-            )}
+                <SelectTrigger className="w-full md:w-[150px]">
+                  <SelectValue placeholder="Profile Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_VALUE}>All Types</SelectItem>
+                  <SelectItem value="alumni">Alumni</SelectItem>
+                  <SelectItem value="member">Member</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={filters.class ?? ALL_VALUE}
+                onValueChange={(v) => handleFilterChange('class', v)}
+              >
+                <SelectTrigger className="w-full md:w-[150px]">
+                  <SelectValue placeholder="Class" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_VALUE}>All Classes</SelectItem>
+                  {classFilterOptions.map((label) => (
+                    <SelectItem key={label} value={label}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={filters.family ?? ALL_VALUE}
+                onValueChange={(v) => handleFilterChange('family', v)}
+              >
+                <SelectTrigger className="w-full md:w-[150px]">
+                  <SelectValue placeholder="Family" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_VALUE}>All Families</SelectItem>
+                  {FRATERNITY_FAMILY_LABELS.map((label) => (
+                    <SelectItem key={label} value={label}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {hasActiveSelectFilters(filters) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    startTransition(() => {
+                      setFilters({})
+                      reset()
+                    })
+                  }}
+                  className="text-sm text-muted-foreground underline hover:text-foreground md:self-center"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+
+            <div className="w-full shrink-0 lg:max-w-sm">
+              <InputGroup className="font-secondary">
+                <InputGroupAddon align="inline-start" aria-hidden>
+                  <Search />
+                </InputGroupAddon>
+                <InputGroupInput
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  placeholder="Search by name…"
+                  aria-label="Search profiles by name"
+                />
+                {searchInput.length > 0 ? (
+                  <InputGroupAddon align="inline-end">
+                    <InputGroupButton
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      aria-label="Clear search"
+                      className="text-muted-foreground hover:text-foreground"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        startTransition(() => {
+                          setSearchInput('')
+                          reset()
+                        })
+                      }}
+                    >
+                      <X />
+                    </InputGroupButton>
+                  </InputGroupAddon>
+                ) : null}
+              </InputGroup>
+            </div>
           </div>
 
           <ProfileTable
             title="All Profiles"
             profiles={paginatedProfiles?.page ?? []}
-            isLoading={false}
+            isLoading={isQueryPending && paginatedProfiles === undefined}
             emptyMessage="No profiles found matching your filters."
             savedProfileIdSet={savedProfileIdSet}
             isSavedProfilesLoading={false}
             onRefresh={refetch}
-            isRefreshing={isFetching || isPending}
+            isRefreshing={isFetching || isTransitionPending}
             onProfileClick={(id) => setSelectedProfileId(id as Id<'profiles'>)}
             hasMore={paginatedProfiles ? !paginatedProfiles.isDone : false}
             hasPrevious={pageIndex > 0}
@@ -256,7 +316,7 @@ function ExplorePage() {
 
       {selectedProfileId ? (
         <SelectedProfileDetailDrawer
-          organizationId={organizationId!}
+          organizationId={organizationId}
           selectedProfileId={selectedProfileId}
           open
           onOpenChange={(nextOpen) => {
@@ -281,6 +341,6 @@ function ExplorePage() {
 
 
 
-function hasActiveFilters(filters: ExploreFilters): boolean {
+function hasActiveSelectFilters(filters: ExploreFilters): boolean {
   return !!(filters.profileType || filters.class || filters.family)
 }

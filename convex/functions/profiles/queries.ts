@@ -412,6 +412,7 @@ export const listPaginatedForExploreWithSavedProfileIds = query({
         profileType: v.optional(v.union(v.literal('alumni'), v.literal('member'))),
         class: v.optional(v.string()),
         family: v.optional(v.string()),
+        searchText: v.optional(v.string()),
       })
     ),
   },
@@ -445,55 +446,88 @@ export const listPaginatedForExploreWithSavedProfileIds = query({
 
     const filters = args.filters
     const currentUserProfileId = appUser.profileId
+    const searchQuery = filters?.searchText?.trim().toLowerCase() ?? ''
 
-    type UsedIndex = 'profileType' | 'class' | 'family' | 'linkedin'
-    let usedIndex: UsedIndex = 'linkedin'
+    let result
 
-    let profileQuery = (() => {
+    if (searchQuery) {
+      let profileQuery = ctx.db
+        .query('profiles')
+        .withSearchIndex('by_organization_name_search', (search) =>
+          search.search('name', searchQuery).eq('organizationId', args.organizationId)
+        )
+
+      if (currentUserProfileId) {
+        profileQuery = profileQuery.filter((q) => q.neq(q.field('_id'), currentUserProfileId))
+      }
+
       if (filters?.profileType) {
-        usedIndex = 'profileType'
-        return ctx.db
-          .query('profiles')
-          .withIndex('by_organization_profileType', (q) =>
-            q.eq('organizationId', args.organizationId).eq('profileType', filters.profileType)
-          )
+        profileQuery = profileQuery.filter((q) =>
+          q.eq(q.field('profileType'), filters.profileType)
+        )
       }
       if (filters?.class) {
-        usedIndex = 'class'
-        return ctx.db
-          .query('profiles')
-          .withIndex('by_organization_class', (q) =>
-            q.eq('organizationId', args.organizationId).eq('class', filters.class)
-          )
+        profileQuery = profileQuery.filter((q) => q.eq(q.field('class'), filters.class))
       }
       if (filters?.family) {
-        usedIndex = 'family'
+        profileQuery = profileQuery.filter((q) => q.eq(q.field('family'), filters.family))
+      }
+
+      result = await profileQuery.paginate(args.paginationOpts)
+    } else {
+      type UsedIndex = 'profileType' | 'class' | 'family' | 'linkedin'
+      let usedIndex: UsedIndex = 'linkedin'
+
+      let profileQuery = (() => {
+        if (filters?.profileType) {
+          usedIndex = 'profileType'
+          return ctx.db
+            .query('profiles')
+            .withIndex('by_organization_profileType', (q) =>
+              q.eq('organizationId', args.organizationId).eq('profileType', filters.profileType)
+            )
+        }
+        if (filters?.class) {
+          usedIndex = 'class'
+          return ctx.db
+            .query('profiles')
+            .withIndex('by_organization_class', (q) =>
+              q.eq('organizationId', args.organizationId).eq('class', filters.class)
+            )
+        }
+        if (filters?.family) {
+          usedIndex = 'family'
+          return ctx.db
+            .query('profiles')
+            .withIndex('by_organization_family', (q) =>
+              q.eq('organizationId', args.organizationId).eq('family', filters.family)
+            )
+        }
         return ctx.db
           .query('profiles')
-          .withIndex('by_organization_family', (q) =>
-            q.eq('organizationId', args.organizationId).eq('family', filters.family)
+          .withIndex('by_organization_linkedin', (q) =>
+            q.eq('organizationId', args.organizationId)
           )
+      })()
+
+      if (currentUserProfileId) {
+        profileQuery = profileQuery.filter((q) => q.neq(q.field('_id'), currentUserProfileId))
       }
-      return ctx.db
-        .query('profiles')
-        .withIndex('by_organization_linkedin', (q) => q.eq('organizationId', args.organizationId))
-    })()
 
-    if (currentUserProfileId) {
-      profileQuery = profileQuery.filter((q) => q.neq(q.field('_id'), currentUserProfileId))
-    }
+      if (filters?.profileType && usedIndex !== 'profileType') {
+        profileQuery = profileQuery.filter((q) =>
+          q.eq(q.field('profileType'), filters.profileType)
+        )
+      }
+      if (filters?.class && usedIndex !== 'class') {
+        profileQuery = profileQuery.filter((q) => q.eq(q.field('class'), filters.class))
+      }
+      if (filters?.family && usedIndex !== 'family') {
+        profileQuery = profileQuery.filter((q) => q.eq(q.field('family'), filters.family))
+      }
 
-    if (filters?.profileType && usedIndex !== 'profileType') {
-      profileQuery = profileQuery.filter((q) => q.eq(q.field('profileType'), filters.profileType))
+      result = await profileQuery.order('desc').paginate(args.paginationOpts)
     }
-    if (filters?.class && usedIndex !== 'class') {
-      profileQuery = profileQuery.filter((q) => q.eq(q.field('class'), filters.class))
-    }
-    if (filters?.family && usedIndex !== 'family') {
-      profileQuery = profileQuery.filter((q) => q.eq(q.field('family'), filters.family))
-    }
-
-    const result = await profileQuery.order('desc').paginate(args.paginationOpts)
 
     return {
       isDone: result.isDone,
