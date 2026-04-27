@@ -17,8 +17,11 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import type { Id } from '@convex/_generated/dataModel'
+import { api } from 'convex/_generated/api'
+import { useQuery } from 'convex/react'
 import { useOrganization } from '@/contexts/OrganizationContext'
-import { FRATERNITY_CLASS_LABELS, FRATERNITY_FAMILY_LABELS } from '@/lib/fraternityCatalog'
+import { FRATERNITY_FAMILY_LABELS } from '@/lib/fraternityCatalog'
+import { sortFraternityClassesByGreek } from '@/lib/fraternityClassSort'
 import { getExploreProfilesFn } from '@/lib/explore.functions'
 import { ensureOrganizationData } from '@/lib/get-organization-data.functions'
 import { useCursorPagination } from '@/lib/use-cursor-pagination'
@@ -61,6 +64,20 @@ function ExplorePage() {
     useCursorPagination()
 
   const [filters, setFilters] = useState<ExploreFilters>({})
+
+  const classFacetPage = useQuery(
+    api.functions.facets.queries.getFacetPage,
+    organizationId
+      ? { organizationId, facet: 'classes' as const, limit: 500 }
+      : 'skip'
+  )
+
+  const classFilterOptions = useMemo(() => {
+    const fromDb = classFacetPage?.items ?? []
+    const withSelected =
+      filters.class && !fromDb.includes(filters.class) ? [filters.class, ...fromDb] : fromDb
+    return sortFraternityClassesByGreek(withSelected)
+  }, [classFacetPage?.items, filters.class])
 
   if (!organizationId) {
     return <ExplorePageSkeleton />
@@ -175,7 +192,7 @@ function ExplorePage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={ALL_VALUE}>All Classes</SelectItem>
-                {FRATERNITY_CLASS_LABELS.map((label) => (
+                {classFilterOptions.map((label) => (
                   <SelectItem key={label} value={label}>
                     {label}
                   </SelectItem>

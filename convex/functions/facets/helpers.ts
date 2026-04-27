@@ -46,7 +46,7 @@ type ProfileLike = {
   majors: string[]
   schools: string[]
   /**
-   * Fraternity class (e.g. Alpha … Alpha Pi). Many members share the same class; facet `classes` aggregates counts.
+   * Fraternity class (e.g. Alpha–Omega, Alpha Rho, later cycles). Many members share the same class; facet `classes` aggregates counts.
    */
   class?: string
   /**
