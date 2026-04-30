@@ -66,6 +66,12 @@ export const processImportQueue = action({
     let failed = 0
 
     const markFailed = async (item: ClaimedItem, errorMessage: string): Promise<void> => {
+      if (item.refreshProfileId) {
+        await ctx.runMutation(internal.functions.profiles.mutations.restoreLinkedInRefreshPending, {
+          profileId: item.refreshProfileId,
+          organizationId: item.organizationId,
+        })
+      }
       await ctx.runMutation(api.functions.importQueue.mutations.updateStatus, {
         id: item.id,
         status: 'failed',
@@ -132,6 +138,7 @@ export const processImportQueue = action({
         await ctx.runMutation(api.functions.profiles.mutations.upsertFromImport, {
           organizationId: item.organizationId,
           linkedInUrl: item.linkedInUrl,
+          profileId: item.refreshProfileId,
           profile: profileForImport,
         })
         if (item.refreshProfileId) {

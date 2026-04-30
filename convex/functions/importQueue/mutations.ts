@@ -283,14 +283,14 @@ export const enqueueLinkedInRefreshForOrg = mutation({
 
     const chunks = chunkArray(pending, MAX_CREATE_MANY)
     for (const chunk of chunks) {
-      const inserts: Promise<unknown>[] = []
+      const writes: Promise<unknown>[] = []
       for (const profile of chunk) {
         const normalized = normalizeLinkedInProfileUrl(profile.linkedInUrl)
         if (!normalized) {
           skippedInvalid += 1
           continue
         }
-        inserts.push(
+        writes.push(
           ctx.db.insert('importQueue', {
             organizationId,
             linkedInUrl: normalized,
@@ -303,10 +303,15 @@ export const enqueueLinkedInRefreshForOrg = mutation({
             refreshProfileId: profile._id,
           })
         )
+        writes.push(
+          ctx.db.patch(profile._id, {
+            linkedinRefreshPendingSince: undefined,
+          })
+        )
       }
-      if (inserts.length > 0) {
-        await Promise.all(inserts)
-        enqueued += inserts.length
+      if (writes.length > 0) {
+        await Promise.all(writes)
+        enqueued += writes.length / 2
       }
     }
 

@@ -1,10 +1,10 @@
+import type { InfiniteData } from '@tanstack/react-query'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useServerFn } from '@tanstack/react-start'
 import { motion } from 'framer-motion'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 
 import { ChatQueryInterface } from '@/components/app/ChatQueryInterface'
-import { ProfileDetailDrawer } from '@/components/app/ProfileDetailDrawer'
 import { SearchResultsContent } from '@/components/home/search/SearchResultsContent'
 import { SelectedProfileDetailDrawer } from '@/components/home/search/SelectedProfileDetailDrawer'
 import { AuroraText } from '@/components/ui/aurora-text'
@@ -27,9 +27,12 @@ export function SearchPageContent() {
   const [searchParams, setSearchParams] = useState<SearchParams>(null)
   const [searchKey, setSearchKey] = useState(0)
   const [selectedProfileId, setSelectedProfileId] = useState<Id<'profiles'> | null>(null)
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hasSearched = !!searchParams
 
   const shouldRunSearch = !!searchParams
+  type SearchProfilesPage = Awaited<ReturnType<typeof searchProfilesForViewer>>
 
   const {
     data: searchResults,
@@ -38,7 +41,13 @@ export function SearchPageContent() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useInfiniteQuery({
+  } = useInfiniteQuery<
+    SearchProfilesPage,
+    Error,
+    InfiniteData<SearchProfilesPage>,
+    unknown[],
+    string | null
+  >({
     queryKey: [
       'search-profiles',
       organizationId,
@@ -82,6 +91,7 @@ export function SearchPageContent() {
     const normalized = normalizeSearchValue(params.slot2, params.searchQuery)
     if (!normalized) return
     setSelectedProfileId(null)
+    setDrawerOpen(false)
     setSearchKey(Date.now())
     setSearchParams({
       slot2: params.slot2,
@@ -132,9 +142,11 @@ export function SearchPageContent() {
                 if (!hasNextPage || isFetchingNextPage) return
                 fetchNextPage()
               }}
-              onProfileClick={(profileId) =>
+              onProfileClick={(profileId) => {
+                if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current)
                 setSelectedProfileId(profileId as Id<'profiles'>)
-              }
+                setDrawerOpen(true)
+              }}
             />
           ) : null
         }
@@ -143,21 +155,18 @@ export function SearchPageContent() {
         <SelectedProfileDetailDrawer
           organizationId={organizationId!}
           selectedProfileId={selectedProfileId}
-          open
+          open={drawerOpen}
           onOpenChange={(nextOpen) => {
-            if (!nextOpen) setSelectedProfileId(null)
+            setDrawerOpen(nextOpen)
+            if (!nextOpen) {
+              if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current)
+              closeTimeoutRef.current = setTimeout(() => {
+                setSelectedProfileId(null)
+              }, 300)
+            }
           }}
         />
-      ) : (
-        <ProfileDetailDrawer
-          open={!!selectedProfileId}
-          onOpenChange={(nextOpen) => {
-            if (!nextOpen) setSelectedProfileId(null)
-          }}
-          profile={undefined}
-          isLoading={false}
-        />
-      )}
+      ) : null}
     </div>
   )
 }

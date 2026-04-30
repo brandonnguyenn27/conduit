@@ -2,10 +2,9 @@ import { keepPreviousData, useQuery as useTanStackQuery } from '@tanstack/react-
 import { createFileRoute } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { Search, X } from 'lucide-react'
-import { useMemo, useState, useTransition } from 'react'
+import { useMemo, useRef, useState, useTransition } from 'react'
 
 import { ExplorePageSkeleton } from '@/components/app/ExplorePageSkeleton'
-import { ProfileDetailDrawer } from '@/components/app/ProfileDetailDrawer'
 import { ProfileTable } from '@/components/app/ProfileTable'
 import { SelectedProfileDetailDrawer } from '@/components/home/search/SelectedProfileDetailDrawer'
 import { AuroraText } from '@/components/ui/aurora-text'
@@ -73,6 +72,8 @@ function ExplorePageContent({ organizationId }: { organizationId: Id<'organizati
   const [selectedProfileId, setSelectedProfileId] = useState<Id<'profiles'> | null>(
     null
   )
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [isTransitionPending, startTransition] = useTransition()
 
   const [filters, setFilters] = useState<ExploreFilters>({})
@@ -296,7 +297,11 @@ function ExplorePageContent({ organizationId }: { organizationId: Id<'organizati
             emptyMessage="No profiles found matching your filters."
             onRefresh={refetch}
             isRefreshing={isFetching || isTransitionPending}
-            onProfileClick={(id) => setSelectedProfileId(id as Id<'profiles'>)}
+            onProfileClick={(id) => {
+              if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current)
+              setSelectedProfileId(id as Id<'profiles'>)
+              setDrawerOpen(true)
+            }}
             hasMore={paginatedProfiles ? !paginatedProfiles.isDone : false}
             hasPrevious={pageIndex > 0}
             onNext={handleNextPage}
@@ -312,21 +317,18 @@ function ExplorePageContent({ organizationId }: { organizationId: Id<'organizati
         <SelectedProfileDetailDrawer
           organizationId={organizationId}
           selectedProfileId={selectedProfileId}
-          open
+          open={drawerOpen}
           onOpenChange={(nextOpen) => {
-            if (!nextOpen) setSelectedProfileId(null)
+            setDrawerOpen(nextOpen)
+            if (!nextOpen) {
+              if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current)
+              closeTimeoutRef.current = setTimeout(() => {
+                setSelectedProfileId(null)
+              }, 300)
+            }
           }}
         />
-      ) : (
-        <ProfileDetailDrawer
-          open={!!selectedProfileId}
-          onOpenChange={(nextOpen) => {
-            if (!nextOpen) setSelectedProfileId(null)
-          }}
-          profile={undefined}
-          isLoading={false}
-        />
-      )}
+      ) : null}
     </div>
   )
 }

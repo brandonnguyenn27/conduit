@@ -2,137 +2,21 @@ import type { Id } from "@convex/_generated/dataModel";
 import { api } from "@convex/_generated/api";
 import { useMutation } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
-import { type MouseEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-	Pagination,
-	PaginationContent,
-	PaginationEllipsis,
-	PaginationItem,
-	PaginationLink,
-	PaginationNext,
-	PaginationPrevious,
-} from "@/components/ui/pagination";
-import { Spinner } from "@/components/ui/spinner";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
+import { useMemo } from "react";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { useSavedProfileIds } from "@/hooks/use-saved-profile-ids";
-import { cn } from "@/lib/utils";
-import { SaveProfileButton } from "./SaveProfileButton";
+import { SavedProfileActionsProvider } from "./profileTable/savedProfileActionsContext";
+import { ProfileTableBody } from "./profileTable/ProfileTableBody";
+import { ProfileTableFooter } from "./profileTable/ProfileTableFooter";
+import { ProfileTableShell } from "./profileTable/ProfileTableShell";
+import { useProfileTablePageMotion } from "./profileTable/useProfileTablePageMotion";
+import type { SearchProfile } from "./profileTable/profileTable.types";
+import {
+	formatResultsSummary,
+	getPaginationSegments,
+} from "./profileTable/profileTable.utils";
 
-type SearchProfile = {
-	_id: string;
-	name: string;
-	headline: string;
-	currentCompany?: string;
-	major?: string;
-	linkedInUrl: string;
-};
-
-const NAME_MAX = 36;
-const HEADLINE_MAX = 72;
-const COMPANY_MAX = 36;
-const MAJOR_MAX = 40;
-
-const TABLE_PADDING_ROW_KEYS = [
-	"pad-0",
-	"pad-1",
-	"pad-2",
-	"pad-3",
-	"pad-4",
-	"pad-5",
-	"pad-6",
-	"pad-7",
-	"pad-8",
-	"pad-9",
-] as const;
-
-function truncateDisplay(text: string, maxLength: number): string {
-	const t = text.trim();
-	if (t.length <= maxLength) return t;
-	if (maxLength <= 3) return ".".repeat(maxLength);
-	return `${t.slice(0, maxLength - 3)}...`;
-}
-
-function formatResultsSummary(
-	currentPage: number,
-	pageSize: number,
-	countOnPage: number,
-	hasMore: boolean | undefined,
-	totalResults?: number,
-): string {
-	if (countOnPage === 0) {
-		return "No profiles on this page.";
-	}
-	const start = (currentPage - 1) * pageSize + 1;
-	const end = (currentPage - 1) * pageSize + countOnPage;
-	const total =
-		totalResults ??
-		(hasMore ? undefined : (currentPage - 1) * pageSize + countOnPage);
-	if (total !== undefined) {
-		return `Showing ${start}–${end} of ${total} results`;
-	}
-	return `Showing ${start}–${end} — more results available`;
-}
-
-const MAX_PAGINATION_PAGE_NUMBERS = 4;
-
-type PaginationSegment =
-	| { type: "page"; page: number }
-	| { type: "ellipsis"; key: string };
-
-/** Caps visible page links at 4; inserts ellipsis for gaps (shadcn-style pagination). */
-function getPaginationSegments(
-	currentPage: number,
-	knownPages: number,
-): PaginationSegment[] {
-	if (knownPages < 1) {
-		return [];
-	}
-	if (knownPages <= MAX_PAGINATION_PAGE_NUMBERS) {
-		return Array.from({ length: knownPages }, (_, i) => ({
-			type: "page" as const,
-			page: i + 1,
-		}));
-	}
-
-	const out: PaginationSegment[] = [];
-	const pushPage = (page: number) => out.push({ type: "page", page });
-	const pushEllipsis = (key: string) => out.push({ type: "ellipsis", key });
-
-	if (currentPage <= 2) {
-		pushPage(1);
-		pushPage(2);
-		pushPage(3);
-		pushEllipsis("tail");
-		pushPage(knownPages);
-	} else if (currentPage >= knownPages - 1) {
-		pushPage(1);
-		pushEllipsis("head");
-		const start = Math.max(2, knownPages - 2);
-		for (let p = start; p <= knownPages; p++) {
-			pushPage(p);
-		}
-	} else {
-		pushPage(1);
-		pushEllipsis("mid-left");
-		pushPage(currentPage);
-		pushPage(currentPage + 1);
-		pushEllipsis("mid-right");
-		pushPage(knownPages);
-	}
-
-	return out;
-}
-
-interface ProfileTableProps {
+export interface ProfileTableProps {
 	title: string;
 	profiles: SearchProfile[];
 	isLoading: boolean;
@@ -157,342 +41,149 @@ interface ProfileTableProps {
 	onPageSelect?: (page: number) => void;
 }
 
-export function ProfileTable({
-	title,
-	profiles,
-	isLoading,
-	emptyMessage,
-	savedProfileIdSet: savedProfileIdSetProp,
-	isSavedProfilesLoading: isSavedProfilesLoadingProp,
-	pageSize = 10,
-	padToPageSize = true,
-	totalResults,
-	onRefresh,
-	isRefreshing,
-	onProfileClick,
-	hasMore,
-	hasPrevious,
-	onNext,
-	onPrevious,
-	currentPage = 1,
-	knownPages = 1,
-	onPageSelect,
-}: ProfileTableProps) {
+export function ProfileTable(props: ProfileTableProps) {
 	const organizationId = useOrganization();
-	const shouldFetchSavedProfileIds = savedProfileIdSetProp === undefined;
+
+	const shouldFetchSavedProfileIds = props.savedProfileIdSet === undefined;
 	const {
 		savedProfileIdSet: savedProfileIdSetFromQuery,
 		isLoading: isSavedProfilesLoadingFromQuery,
 	} = useSavedProfileIds(shouldFetchSavedProfileIds ? organizationId : null);
-	const savedProfileIdSet = savedProfileIdSetProp ?? savedProfileIdSetFromQuery;
+
+	const savedProfileIdSet = props.savedProfileIdSet ?? savedProfileIdSetFromQuery;
 	const isSavedProfilesLoading =
-		isSavedProfilesLoadingProp ?? isSavedProfilesLoadingFromQuery;
+		props.isSavedProfilesLoading ?? isSavedProfilesLoadingFromQuery;
+
 	const addSavedProfile = useMutation(api.functions.savedProfiles.mutations.add);
-	const removeSavedProfile = useMutation(
-		api.functions.savedProfiles.mutations.remove,
+	const removeSavedProfile = useMutation(api.functions.savedProfiles.mutations.remove);
+
+	if (!organizationId) {
+		return (
+			<ProfileTablePresentation
+				{...props}
+				savedProfileIdSet={savedProfileIdSet}
+				isSavedProfilesLoading={isSavedProfilesLoading}
+			/>
+		);
+	}
+
+	return (
+		<SavedProfileActionsProvider
+			value={{
+				organizationId,
+				saveProfile: async ({ profileId, organizationId }) => {
+					await addSavedProfile({ profileId, organizationId });
+				},
+				unsaveProfile: async ({ profileId }) => {
+					await removeSavedProfile({ profileId });
+				},
+			}}
+		>
+			<ProfileTablePresentation
+				{...props}
+				savedProfileIdSet={savedProfileIdSet}
+				isSavedProfilesLoading={isSavedProfilesLoading}
+			/>
+		</SavedProfileActionsProvider>
 	);
+}
+
+function ProfileTablePresentation(props: ProfileTableProps) {
+	const {
+		title,
+		profiles,
+		isLoading,
+		emptyMessage,
+		savedProfileIdSet,
+		isSavedProfilesLoading,
+		pageSize = 10,
+		padToPageSize = true,
+		totalResults,
+		onRefresh,
+		isRefreshing,
+		onProfileClick,
+		hasMore,
+		hasPrevious,
+		onNext,
+		onPrevious,
+		currentPage = 1,
+		knownPages = 1,
+		onPageSelect,
+	} = props;
+
 	const showEmptyState = !isLoading && profiles.length === 0;
-	const resultsSummary = formatResultsSummary(
+	const showResultsFooter = !isLoading && (profiles.length > 0 || hasPrevious || hasMore);
+
+	const resultsSummary = formatResultsSummary({
 		currentPage,
 		pageSize,
-		profiles.length,
+		countOnPage: profiles.length,
 		hasMore,
 		totalResults,
-	);
-	// Keep pagination visible on an empty page (e.g. edge cases) so Previous still works.
-	const showResultsFooter =
-		!isLoading && (profiles.length > 0 || hasPrevious || hasMore);
+	});
 
 	const paginationSegments = useMemo(
 		() => getPaginationSegments(currentPage, knownPages),
 		[currentPage, knownPages],
 	);
 
-	const [direction, setDirection] = useState(0);
-	const prevPageRef = useRef(currentPage);
-
-	useEffect(() => {
-		if (currentPage !== prevPageRef.current) {
-			setDirection(currentPage > prevPageRef.current ? 1 : -1);
-			prevPageRef.current = currentPage;
-		}
-	}, [currentPage]);
+	const { direction, motionKey } = useProfileTablePageMotion({
+		isLoading,
+		currentPage,
+		profiles,
+	});
 
 	const paddingRows = padToPageSize ? Math.max(0, pageSize - profiles.length) : 0;
 
 	return (
-		<Card className="rounded-lg border-border/70 bg-white/70 backdrop-blur-md dark:bg-zinc-900/70">
-			<CardHeader className="flex flex-row items-center justify-between gap-4">
-				<CardTitle className="font-(family-name:--font-editorial) text-2xl">
-					{title}
-				</CardTitle>
-				{onRefresh ? (
-					<button
-						type="button"
-						onClick={onRefresh}
-						disabled={isRefreshing}
-						className="text-sm text-muted-foreground underline hover:text-foreground disabled:opacity-50"
+		<ProfileTableShell title={title} onRefresh={onRefresh} isRefreshing={isRefreshing}>
+			<div
+				className="relative grid w-full overflow-hidden"
+				style={{ gridTemplateColumns: "1fr", gridTemplateRows: "1fr" }}
+			>
+				<AnimatePresence custom={direction} initial={false} mode="wait">
+					<motion.div
+						key={motionKey}
+						custom={direction}
+						variants={{
+							enter: (dir: number) => ({ x: dir > 0 ? 30 : -30, opacity: 0 }),
+							center: { x: 0, opacity: 1 },
+							exit: (dir: number) => ({ x: dir < 0 ? 30 : -30, opacity: 0 }),
+						}}
+						initial="enter"
+						animate="center"
+						exit="exit"
+						transition={{ duration: 0.25, ease: "easeInOut" }}
+						className="col-start-1 row-start-1 w-full min-w-0"
 					>
-						Refresh
-					</button>
-				) : null}
-			</CardHeader>
-			<CardContent>
-				<div
-					className="relative grid w-full overflow-hidden"
-					style={{ gridTemplateColumns: "1fr", gridTemplateRows: "1fr" }}
-				>
-					<AnimatePresence custom={direction} initial={false} mode="wait">
-						<motion.div
-							key={currentPage}
-							custom={direction}
-							variants={{
-								enter: (dir: number) => ({ x: dir > 0 ? 30 : -30, opacity: 0 }),
-								center: { x: 0, opacity: 1 },
-								exit: (dir: number) => ({ x: dir < 0 ? 30 : -30, opacity: 0 }),
-							}}
-							initial="enter"
-							animate="center"
-							exit="exit"
-							transition={{ duration: 0.25, ease: "easeInOut" }}
-							className="col-start-1 row-start-1 w-full min-w-0"
-						>
-							<Table className="w-full table-auto md:table-fixed">
-								<TableHeader>
-									<TableRow>
-										<TableHead className="w-[72%] text-xs uppercase tracking-wide md:w-[18%]">
-											Name
-										</TableHead>
-										<TableHead className="hidden w-[34%] text-xs uppercase tracking-wide md:table-cell">
-											Current Occupation
-										</TableHead>
-										<TableHead className="hidden w-[18%] text-xs uppercase tracking-wide md:table-cell">
-											Company
-										</TableHead>
-										<TableHead className="hidden w-[18%] text-xs uppercase tracking-wide md:table-cell">
-											Major
-										</TableHead>
-										<TableHead className="w-[28%] text-right text-xs uppercase tracking-wide md:w-[22%]">
-											
-										</TableHead>
-									</TableRow>
-								</TableHeader>
-								<TableBody>
-									{profiles.map((profile) => {
-										const profileId = profile._id as Id<"profiles">;
-										const nameDisplay = truncateDisplay(profile.name, NAME_MAX);
-										const headlineDisplay = truncateDisplay(
-											profile.headline,
-											HEADLINE_MAX,
-										);
-										const companyRaw = profile.currentCompany ?? "—";
-										const companyDisplay = truncateDisplay(
-											companyRaw,
-											COMPANY_MAX,
-										);
-										const majorRaw = profile.major?.trim()
-											? profile.major.trim()
-											: "—";
-										const majorDisplay = truncateDisplay(
-											majorRaw,
-											MAJOR_MAX,
-										);
-										return (
-											<TableRow
-												key={profile._id}
-												onClick={() => onProfileClick?.(profile._id)}
-												className={cn(
-													"group",
-													onProfileClick ? "cursor-pointer" : "cursor-default",
-												)}
-											>
-												<TableCell className="py-4 font-medium">
-													<span className="block truncate" title={profile.name}>
-														{nameDisplay}
-													</span>
-													{profile.major?.trim() ? (
-														<span
-															className="mt-0.5 block truncate text-xs text-muted-foreground md:hidden"
-															title={profile.major.trim()}
-														>
-															{truncateDisplay(
-																profile.major.trim(),
-																MAJOR_MAX,
-															)}
-														</span>
-													) : null}
-												</TableCell>
-												<TableCell className="hidden py-4 text-muted-foreground md:table-cell">
-													<span
-														className="block truncate"
-														title={profile.headline}
-													>
-														{headlineDisplay}
-													</span>
-												</TableCell>
-												<TableCell className="hidden py-4 md:table-cell">
-													<span className="block truncate" title={companyRaw}>
-														{companyDisplay}
-													</span>
-												</TableCell>
-												<TableCell className="hidden py-4 text-muted-foreground md:table-cell">
-													<span className="block truncate" title={majorRaw}>
-														{majorDisplay}
-													</span>
-												</TableCell>
-												<TableCell className="py-4">
-													<div className="flex items-center justify-end gap-2">
-														{organizationId ? (
-															<SaveProfileButton
-																key={profileId}
-																profileId={profileId}
-																organizationId={organizationId}
-																saved={savedProfileIdSet.has(profileId)}
-																loading={isSavedProfilesLoading}
-																onSave={async ({ profileId, organizationId }) => {
-																	await addSavedProfile({
-																		profileId,
-																		organizationId,
-																	});
-																}}
-																onUnsave={async ({ profileId }) => {
-																	await removeSavedProfile({ profileId });
-																}}
-																className="h-9 w-9"
-															/>
-														) : null}
-														<a
-															href={profile.linkedInUrl}
-															target="_blank"
-															rel="noopener noreferrer"
-															aria-label={`Open ${profile.name} on LinkedIn`}
-															onClick={(event) => {
-																event.stopPropagation();
-															}}
-															className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border/70 hover:bg-muted"
-														>
-															<LinkedInIcon />
-														</a>
-													</div>
-												</TableCell>
-											</TableRow>
-										);
-									})}
-									{TABLE_PADDING_ROW_KEYS.slice(0, paddingRows).map(
-										(rowKey) => (
-											<TableRow
-												key={rowKey}
-												className="pointer-events-none border-b-0 hover:bg-transparent"
-											>
-												<TableCell className="py-4">
-													<div className="h-9 w-px"></div>
-												</TableCell>
-												<TableCell className="hidden py-4 md:table-cell"></TableCell>
-												<TableCell className="hidden py-4 md:table-cell"></TableCell>
-												<TableCell className="hidden py-4 md:table-cell"></TableCell>
-												<TableCell className="py-4"></TableCell>
-											</TableRow>
-										),
-									)}
-								</TableBody>
-							</Table>
-						</motion.div>
-					</AnimatePresence>
-				</div>
+						<ProfileTableBody
+							profiles={profiles}
+							onProfileClick={onProfileClick}
+							savedProfileIdSet={savedProfileIdSet}
+							isSavedProfilesLoading={isSavedProfilesLoading}
+							paddingRows={paddingRows}
+						/>
+					</motion.div>
+				</AnimatePresence>
+			</div>
 
-				{showEmptyState ? (
-					<p className="text-muted-foreground mt-4 text-sm">{emptyMessage}</p>
-				) : null}
+			{showEmptyState ? (
+				<p className="text-muted-foreground mt-4 text-sm">{emptyMessage}</p>
+			) : null}
 
-				{showResultsFooter ? (
-					<div className="mt-4 flex flex-col gap-3 px-2 sm:flex-row sm:items-center sm:justify-between">
-						<p className="text-muted-foreground text-sm">{resultsSummary}</p>
-						{hasPrevious || hasMore ? (
-							<div className="flex justify-end">
-								<Pagination className="mx-0 w-auto">
-									<PaginationContent>
-										<PaginationItem>
-											<PaginationPrevious
-												onClick={(e) => {
-													e.preventDefault();
-													if (hasPrevious && onPrevious && !isRefreshing)
-														onPrevious();
-												}}
-												href="#"
-												aria-disabled={!hasPrevious || isRefreshing}
-												className={
-													!hasPrevious || isRefreshing
-														? "pointer-events-none opacity-50"
-														: "cursor-pointer"
-												}
-											/>
-										</PaginationItem>
-										{paginationSegments.map((segment) =>
-											segment.type === "page" ? (
-												<PaginationItem key={segment.page}>
-													<PaginationLink
-														href="#"
-														isActive={currentPage === segment.page}
-														onClick={(e: MouseEvent) => {
-															e.preventDefault();
-															if (onPageSelect && !isRefreshing)
-																onPageSelect(segment.page);
-														}}
-														className={
-															isRefreshing
-																? "pointer-events-none opacity-50"
-																: ""
-														}
-													>
-														{segment.page}
-													</PaginationLink>
-												</PaginationItem>
-											) : (
-												<PaginationItem key={segment.key}>
-													<PaginationEllipsis />
-												</PaginationItem>
-											),
-										)}
-										<PaginationItem>
-											{isRefreshing ? (
-												<span className="inline-flex h-9 w-9 items-center justify-center">
-													<Spinner className="size-4 text-muted-foreground" />
-												</span>
-											) : (
-												<PaginationNext
-													onClick={(e) => {
-														e.preventDefault();
-														if (hasMore && onNext) onNext();
-													}}
-													href="#"
-													aria-disabled={!hasMore}
-													className={
-														!hasMore
-															? "pointer-events-none opacity-50"
-															: "cursor-pointer"
-													}
-												/>
-											)}
-										</PaginationItem>
-									</PaginationContent>
-								</Pagination>
-							</div>
-						) : null}
-					</div>
-				) : null}
-			</CardContent>
-		</Card>
-	);
-}
-
-function LinkedInIcon() {
-	return (
-		<svg
-			aria-hidden="true"
-			viewBox="0 0 24 24"
-			className="h-4 w-4 fill-current text-foreground"
-		>
-			<path d="M19 3A2 2 0 0 1 21 5v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14ZM8.34 17.34V9.89H5.86v7.45h2.48Zm-1.24-8.47c.79 0 1.43-.65 1.43-1.43 0-.8-.64-1.43-1.43-1.43-.78 0-1.42.64-1.42 1.43 0 .79.64 1.43 1.42 1.43Zm11.24 8.47v-4.12c0-2.21-1.18-3.24-2.75-3.24-1.27 0-1.84.7-2.16 1.2v-1.03h-2.48v7.2h2.48v-4.02c0-.21.02-.42.08-.57.17-.42.56-.86 1.21-.86.85 0 1.19.65 1.19 1.6v3.85h2.43Z" />
-		</svg>
+			{showResultsFooter ? (
+				<ProfileTableFooter
+					resultsSummary={resultsSummary}
+					isRefreshing={isRefreshing}
+					hasPrevious={hasPrevious}
+					hasMore={hasMore}
+					onPrevious={onPrevious}
+					onNext={onNext}
+					currentPage={currentPage}
+					paginationSegments={paginationSegments}
+					onPageSelect={onPageSelect}
+				/>
+			) : null}
+		</ProfileTableShell>
 	);
 }

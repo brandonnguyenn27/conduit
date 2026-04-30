@@ -1,9 +1,8 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
-import { useState, useTransition } from 'react'
+import { useRef, useState, useTransition } from 'react'
 
-import { ProfileDetailDrawer } from '@/components/app/ProfileDetailDrawer'
 import { ProfileTable } from '@/components/app/ProfileTable'
 import { SelectedProfileDetailDrawer } from '@/components/home/search/SelectedProfileDetailDrawer'
 import { AuroraText } from '@/components/ui/aurora-text'
@@ -13,6 +12,7 @@ import type { Id } from '@convex/_generated/dataModel'
 import { useOrganization } from '@/contexts/OrganizationContext'
 import { ensureOrganizationData } from '@/lib/get-organization-data.functions'
 import { getSavedProfilesForViewerFn } from '@/lib/saved-profiles.functions'
+import { savedProfilesQueryOptions } from '@/lib/viewer-route-queries'
 import { useCursorPagination } from '@/lib/use-cursor-pagination'
 import { cn } from '@/lib/utils'
 
@@ -21,14 +21,13 @@ export const Route = createFileRoute('/_authenticated/saved')({
     const { organizationId } = await ensureOrganizationData(context.queryClient)
     if (!organizationId) return
 
-    await context.queryClient.prefetchQuery({
-      queryKey: ['saved-profiles', organizationId, null],
-      queryFn: async () =>
-        await getSavedProfilesForViewerFn({
+    await context.queryClient.prefetchQuery(
+      savedProfilesQueryOptions(organizationId, null, () =>
+        getSavedProfilesForViewerFn({
           data: { organizationId, cursor: null },
         }),
-      staleTime: 5 * 60 * 1000,
-    })
+      ),
+    )
   },
   pendingComponent: SavedPageSkeleton,
   component: SavedPage,
@@ -66,32 +65,36 @@ function SavedPageSkeleton() {
 
 function SavedPage() {
   const organizationId = useOrganization()
+  if (!organizationId) {
+    return <SavedPageSkeleton />
+  }
+  return <SavedPageWithOrg organizationId={organizationId} />
+}
+
+function SavedPageWithOrg({ organizationId }: { organizationId: Id<'organizations'> }) {
   const getSavedProfiles = useServerFn(getSavedProfilesForViewerFn)
   const [selectedProfileId, setSelectedProfileId] = useState<Id<'profiles'> | null>(
     null
   )
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [isPending, startTransition] = useTransition()
 
   const { cursors, pageIndex, currentCursor, nextPage, prevPage, selectPage } =
     useCursorPagination()
-
-  if (!organizationId) {
-    return <SavedPageSkeleton />
-  }
 
   const {
     data: paginatedProfiles,
     refetch,
     isFetching,
   } = useSuspenseQuery({
-    queryKey: ['saved-profiles', organizationId, currentCursor],
-    staleTime: 5 * 60 * 1000,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-    queryFn: async () =>
-      await getSavedProfiles({
+    ...savedProfilesQueryOptions(organizationId, currentCursor, () =>
+      getSavedProfiles({
         data: { organizationId, cursor: currentCursor },
       }),
+    ),
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   })
 
   const handleNextPage = () => {
@@ -138,7 +141,11 @@ function SavedPage() {
             emptyMessage="You haven't saved any profiles yet."
             onRefresh={refetch}
             isRefreshing={isFetching || isPending}
-            onProfileClick={(id) => setSelectedProfileId(id as Id<'profiles'>)}
+            onProfileClick={(id) => {
+              if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current)
+              setSelectedProfileId(id as Id<'profiles'>)
+              setDrawerOpen(true)
+            }}
             hasMore={paginatedProfiles ? !paginatedProfiles.isDone : false}
             hasPrevious={pageIndex > 0}
             onNext={handleNextPage}
@@ -152,23 +159,20 @@ function SavedPage() {
 
       {selectedProfileId ? (
         <SelectedProfileDetailDrawer
-          organizationId={organizationId!}
+          organizationId={organizationId}
           selectedProfileId={selectedProfileId}
-          open
+          open={drawerOpen}
           onOpenChange={(nextOpen) => {
-            if (!nextOpen) setSelectedProfileId(null)
+            setDrawerOpen(nextOpen)
+            if (!nextOpen) {
+              if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current)
+              closeTimeoutRef.current = setTimeout(() => {
+                setSelectedProfileId(null)
+              }, 300)
+            }
           }}
         />
-      ) : (
-        <ProfileDetailDrawer
-          open={!!selectedProfileId}
-          onOpenChange={(nextOpen) => {
-            if (!nextOpen) setSelectedProfileId(null)
-          }}
-          profile={undefined}
-          isLoading={false}
-        />
-      )}
+      ) : null}
     </div>
   )
 }

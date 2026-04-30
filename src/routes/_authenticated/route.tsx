@@ -1,12 +1,20 @@
+import { useQueryClient } from '@tanstack/react-query'
 import {
   Link,
   Outlet,
   createFileRoute,
   useLoaderData,
 } from '@tanstack/react-router'
+import { useServerFn } from '@tanstack/react-start'
 
 import { OrganizationProvider } from '@/contexts/OrganizationContext'
 import { getOrganizationDataFn } from '@/lib/get-organization-data.functions'
+import { getMyProfileFn } from '@/lib/profile.functions'
+import { getSavedProfilesForViewerFn } from '@/lib/saved-profiles.functions'
+import {
+  myProfileQueryOptions,
+  savedProfilesQueryOptions,
+} from '@/lib/viewer-route-queries'
 import {
   NavigationMenu,
   NavigationMenuItem,
@@ -21,6 +29,27 @@ export const Route = createFileRoute('/_authenticated')({
 
 function AuthenticatedLayout() {
   const { organizationId, isAdmin } = useLoaderData({ from: '/_authenticated' })
+  const queryClient = useQueryClient()
+  const getSavedProfiles = useServerFn(getSavedProfilesForViewerFn)
+  const getMyProfile = useServerFn(getMyProfileFn)
+
+  const prefetchSaved = () => {
+    if (!organizationId) return
+    void queryClient.prefetchQuery(
+      savedProfilesQueryOptions(organizationId, null, () =>
+        getSavedProfiles({ data: { organizationId, cursor: null } }),
+      ),
+    )
+  }
+
+  const prefetchProfile = () => {
+    if (!organizationId) return
+    void queryClient.prefetchQuery(
+      myProfileQueryOptions(organizationId, () =>
+        getMyProfile({ data: { organizationId } }),
+      ),
+    )
+  }
 
   return (
     <OrganizationProvider organizationId={organizationId}>
@@ -64,6 +93,8 @@ function AuthenticatedLayout() {
                   <Link
                     to="/saved"
                     activeProps={{ className: 'bg-accent text-accent-foreground' }}
+                    onMouseEnter={prefetchSaved}
+                    onFocus={prefetchSaved}
                   >
                     Saved
                   </Link>
@@ -74,6 +105,8 @@ function AuthenticatedLayout() {
                   <Link
                     to="/profile"
                     activeProps={{ className: 'bg-accent text-accent-foreground' }}
+                    onMouseEnter={prefetchProfile}
+                    onFocus={prefetchProfile}
                   >
                     Profile
                   </Link>

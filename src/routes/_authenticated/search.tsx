@@ -14,13 +14,21 @@ export const Route = createFileRoute('/_authenticated/search')({
 
 function SearchPageSkeleton() {
   return (
-    <div className="relative min-h-[70vh] w-full overflow-hidden">
+    <div className="relative min-h-screen w-full overflow-hidden">
       <DotPattern
+        width={32}
+        height={32}
+        cx={1}
+        cy={1}
+        cr={1.5}
         className={cn(
-          'mask-[radial-gradient(400px_circle_at_center,white,transparent)]'
+          'mask-[radial-gradient(800px_circle_at_center,white,transparent)]',
+          '[-webkit-mask-image:radial-gradient(800px_circle_at_center,white,transparent)]',
+          'mask-no-repeat',
+          '[-webkit-mask-repeat:no-repeat]'
         )}
       />
-      <div className="relative z-10 flex min-h-[70vh] flex-col items-center justify-center gap-8 max-md:-translate-y-4 md:-translate-y-10">
+      <div className="relative z-10 flex min-h-screen flex-col items-center justify-center gap-8 max-md:-translate-y-4 md:-translate-y-10">
         <h1 className="w-full max-w-[min(100%,42rem)] px-4 text-center text-4xl font-bold tracking-tighter md:text-5xl lg:text-7xl">
           <AuroraText
             className="font-(family-name:--font-editorial)"
@@ -37,10 +45,18 @@ function SearchPageSkeleton() {
 
 function SearchPage() {
   return (
-    <div className="relative min-h-[70vh] w-full overflow-hidden">
+    <div className="relative min-h-screen w-full overflow-hidden">
       <DotPattern
+        width={32}
+        height={32}
+        cx={1}
+        cy={1}
+        cr={1.5}
         className={cn(
-          'mask-[radial-gradient(400px_circle_at_center,white,transparent)]'
+          'mask-[radial-gradient(800px_circle_at_center,white,transparent)]',
+          '[-webkit-mask-image:radial-gradient(800px_circle_at_center,white,transparent)]',
+          'mask-no-repeat',
+          '[-webkit-mask-repeat:no-repeat]'
         )}
       />
       <SearchPageContent />

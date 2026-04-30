@@ -192,15 +192,20 @@ export const upsertFromImport = mutation({
   args: {
     organizationId: v.id('organizations'),
     linkedInUrl: v.string(),
+    profileId: v.optional(v.id('profiles')),
     profile: profileInsertValidator,
   },
   handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query('profiles')
-      .withIndex('by_organization_linkedin', (q) =>
-        q.eq('organizationId', args.organizationId).eq('linkedInUrl', args.linkedInUrl)
-      )
-      .unique()
+    const existingById = args.profileId ? await ctx.db.get(args.profileId) : null
+    const existing =
+      existingById && existingById.organizationId === args.organizationId
+        ? existingById
+        : await ctx.db
+            .query('profiles')
+            .withIndex('by_organization_linkedin', (q) =>
+              q.eq('organizationId', args.organizationId).eq('linkedInUrl', args.linkedInUrl)
+            )
+            .unique()
     const doc = {
       ...args.profile,
       organizationId: args.organizationId,
@@ -550,6 +555,20 @@ export const completeLinkedInRefresh = internalMutation({
       linkedinRefreshPendingSince: undefined,
       linkedinRefreshLastCompletedAt: now,
     })
+  },
+})
+
+export const restoreLinkedInRefreshPending = internalMutation({
+  args: {
+    profileId: v.id('profiles'),
+    organizationId: v.id('organizations'),
+  },
+  handler: async (ctx, args) => {
+    const profile = await ctx.db.get(args.profileId)
+    if (!profile || profile.organizationId !== args.organizationId) {
+      return
+    }
+    await ctx.db.patch(args.profileId, { linkedinRefreshPendingSince: Date.now() })
   },
 })
 

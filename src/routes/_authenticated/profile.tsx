@@ -1,4 +1,6 @@
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
+import { useServerFn } from '@tanstack/react-start'
 import { useMutation, useQuery } from 'convex/react'
 import { MapPin, Building2, GraduationCap, LinkIcon, RefreshCw } from 'lucide-react'
 import { useMemo, useState } from 'react'
@@ -6,6 +8,7 @@ import { createPortal } from 'react-dom'
 import { toast } from 'sonner'
 
 import { api } from '@convex/_generated/api'
+import type { Id } from '@convex/_generated/dataModel'
 import { DEFAULT_LINKEDIN_REFRESH_COOLDOWN_MS } from '@convex/lib/linkedinRefreshConfig.ts'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -18,6 +21,7 @@ import { AuroraText } from '@/components/ui/aurora-text'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { cn } from '@/lib/utils'
 import { ensureOrganizationData } from '@/lib/get-organization-data.functions'
+import { myProfileQueryOptions } from '@/lib/viewer-route-queries'
 import { useOrganization } from '@/contexts/OrganizationContext'
 import { getLinkedInRefreshUiState } from '@/lib/linkedin-refresh-display'
 
@@ -25,7 +29,11 @@ export const Route = createFileRoute('/_authenticated/profile')({
   loader: async ({ context }) => {
     const { organizationId } = await ensureOrganizationData(context.queryClient)
     if (!organizationId) throw new Error('No organization found')
-    return await getMyProfileFn({ data: { organizationId } })
+    await context.queryClient.prefetchQuery(
+      myProfileQueryOptions(organizationId, () =>
+        getMyProfileFn({ data: { organizationId } }),
+      ),
+    )
   },
   pendingComponent: ProfilePageSkeleton,
   component: ProfilePage,
@@ -34,19 +42,33 @@ export const Route = createFileRoute('/_authenticated/profile')({
 const MS_PER_DAY = 86400000
 
 function ProfilePage() {
-  const profile = Route.useLoaderData()
   const organizationId = useOrganization()
+  if (!organizationId) {
+    return <ProfilePageSkeleton />
+  }
+  return <ProfilePageWithData organizationId={organizationId} />
+}
+
+function ProfilePageWithData({ organizationId }: { organizationId: Id<'organizations'> }) {
+  const getMyProfile = useServerFn(getMyProfileFn)
+  const { data: profile } = useSuspenseQuery({
+    ...myProfileQueryOptions(organizationId, () =>
+      getMyProfile({ data: { organizationId } }),
+    ),
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+  })
   const [refreshConfirmOpen, setRefreshConfirmOpen] = useState(false)
   const [requestSubmitting, setRequestSubmitting] = useState(false)
 
   const refreshState = useQuery(
     api.functions.profiles.queries.getMyLinkedInRefreshState,
-    organizationId ? { organizationId } : 'skip',
+    { organizationId },
   )
 
   const cooldownPolicy = useQuery(
     api.functions.profiles.queries.getLinkedInRefreshCooldownPolicy,
-    organizationId ? { organizationId } : 'skip',
+    { organizationId },
   )
 
   const requestRefresh = useMutation(api.functions.profiles.mutations.requestLinkedInRefresh)
@@ -163,16 +185,6 @@ function ProfilePage() {
             <AlertDescription>
               An administrator will process your refresh and your directory entry will be updated from
               LinkedIn.
-            </AlertDescription>
-          </Alert>
-        ) : null}
-
-        {refreshUi.showCooldownMessage ? (
-          <Alert>
-            <AlertTitle>Cooldown active</AlertTitle>
-            <AlertDescription>
-              You can request another LinkedIn update in {refreshUi.cooldownDaysRemaining}{' '}
-              {refreshUi.cooldownDaysRemaining === 1 ? 'day' : 'days'}.
             </AlertDescription>
           </Alert>
         ) : null}
@@ -367,6 +379,16 @@ function ProfilePage() {
           )}
         </CardContent>
       </Card>
+
+      {refreshUi.showCooldownMessage ? (
+        <Alert>
+          <AlertTitle>Cooldown active</AlertTitle>
+          <AlertDescription>
+            You can request another LinkedIn update in {refreshUi.cooldownDaysRemaining}{' '}
+            {refreshUi.cooldownDaysRemaining === 1 ? 'day' : 'days'}.
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       {refreshUi.canRequest ? (
         <Card className="border-muted-foreground/25 bg-muted/40 shadow-sm backdrop-blur-[1px]">
