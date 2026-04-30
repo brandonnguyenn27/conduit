@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { authClient } from '@/lib/auth-client'
 import { getMyProfileFn } from '@/lib/profile.functions'
 import { ProfilePageSkeleton } from '@/components/app/ProfilePageSkeleton'
+import { ProfileSectionCard } from '@/components/app/ProfileSectionCard'
 import { groupExperiencesByCompany } from '@/lib/experience'
 import { DotPattern } from '@/components/ui/dot-pattern'
 import { AuroraText } from '@/components/ui/aurora-text'
@@ -190,8 +191,7 @@ function ProfilePageWithData({ organizationId }: { organizationId: Id<'organizat
         ) : null}
 
         {/* Header Section */}
-        <Card>
-        <CardContent className="pt-6">
+        
           <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
             {profile.profileImageUrl ? (
               <img 
@@ -253,7 +253,7 @@ function ProfilePageWithData({ organizationId }: { organizationId: Id<'organizat
             
             <Button
               variant="destructive"
-              className="mt-4 w-full sm:mt-0 sm:ms-auto sm:w-auto sm:shrink-0"
+              className="mt-4 rounded-full w-full sm:mt-0 sm:ms-auto sm:w-auto sm:shrink-0 cursor-pointer"
               onClick={() => {
                 void authClient.signOut({
                   fetchOptions: {
@@ -265,27 +265,18 @@ function ProfilePageWithData({ organizationId }: { organizationId: Id<'organizat
               Log out
             </Button>
           </div>
-        </CardContent>
-      </Card>
+       
 
       {/* About Section */}
       {profile.summary && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-editorial">About</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="whitespace-pre-wrap text-sm leading-relaxed">{profile.summary}</p>
-          </CardContent>
-        </Card>
+        <ProfileSectionCard title="About">
+          <p className="whitespace-pre-wrap text-sm leading-relaxed">{profile.summary}</p>
+        </ProfileSectionCard>
       )}
 
       {/* Experience Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-editorial">Experience</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
+      <ProfileSectionCard title="Experience">
+        <div className="space-y-6">
           {profile.experience.length > 0 ? (
             groupExperiencesByCompany(profile.experience).map((group, groupIndex) => (
               <div key={groupIndex} className="flex gap-4">
@@ -324,15 +315,12 @@ function ProfilePageWithData({ organizationId }: { organizationId: Id<'organizat
           ) : (
             <p className="text-sm text-muted-foreground">No experience listed.</p>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </ProfileSectionCard>
 
       {/* Education Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-editorial">Education</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
+      <ProfileSectionCard title="Education">
+        <div className="space-y-6">
           {profile.education.length > 0 ? (
             profile.education.map((edu, i) => (
               <div key={i} className="flex gap-4">
@@ -354,15 +342,11 @@ function ProfilePageWithData({ organizationId }: { organizationId: Id<'organizat
           ) : (
             <p className="text-sm text-muted-foreground">No education listed.</p>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </ProfileSectionCard>
 
       {/* Skills Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-editorial">Skills</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <ProfileSectionCard title="Skills">
           {profile.skills && profile.skills.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {profile.skills.map((skill, i) => (
@@ -377,8 +361,7 @@ function ProfilePageWithData({ organizationId }: { organizationId: Id<'organizat
           ) : (
             <p className="text-sm text-muted-foreground">No skills listed.</p>
           )}
-        </CardContent>
-      </Card>
+      </ProfileSectionCard>
 
       {refreshUi.showCooldownMessage ? (
         <Alert>
@@ -391,12 +374,9 @@ function ProfilePageWithData({ organizationId }: { organizationId: Id<'organizat
       ) : null}
 
       {refreshUi.canRequest ? (
-        <Card className="border-muted-foreground/25 bg-muted/40 shadow-sm backdrop-blur-[1px]">
-          <CardContent className="flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
+        <ProfileSectionCard title="LinkedIn directory data" className="bg-linear-to-b from-background to-muted/50">
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
             <div className="space-y-2">
-              <h3 className="font-semibold font-editorial text-lg tracking-tight">
-                LinkedIn directory data
-              </h3>
               <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
                 Ask your administrator to refresh your profile from LinkedIn so this page stays current.
               </p>
@@ -415,8 +395,8 @@ function ProfilePageWithData({ organizationId }: { organizationId: Id<'organizat
               <RefreshCw className="size-4 opacity-90" aria-hidden />
               Request LinkedIn update
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </ProfileSectionCard>
       ) : null}
     </div>
     </div>
